@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>研究執行時間軸 v5</title>
+  <title>研究執行時間軸 v6</title>
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap");
 
@@ -329,6 +329,66 @@
     }
     .toast.show { opacity: 1; bottom: 34px; }
 
+
+    .view-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .view-toggle { border-radius: 999px; padding: 7px 14px; background: #fffbf4; font-size: 14px; }
+    .view-toggle.active { background: var(--deep); color: #fff; border-color: var(--deep); }
+    .date-badge.date-截止日期 { background: #fff1ec; color: #a54231; border-color: #e4b2a5; }
+    .date-badge.date-提醒日期 { background: #eef7ff; color: #2b6696; border-color: #b8d4ea; }
+    .date-badge.date-會議時間 { background: #f1efff; color: #6357c5; border-color: #c7c1f0; }
+    .date-badge.date-資料回收 { background: #ecfbf5; color: #178a68; border-color: #bde1d4; }
+    .date-kind {
+      font-size: 11px;
+      font-weight: 800;
+      margin-right: 6px;
+      padding-right: 6px;
+      border-right: 1px solid rgba(90,70,48,.25);
+      letter-spacing: .02em;
+    }
+    .rich-text { margin-top: 8px; color: #4f493f; font-size: 14px; line-height: 1.75; }
+    .rich-text p { margin: 0 0 5px; }
+    .rich-text ul, .rich-text ol { margin: 4px 0 6px 1.3em; padding: 0; }
+    .rich-text li { margin: 2px 0; }
+    .checkline { display: flex; gap: 8px; align-items: flex-start; margin: 3px 0; }
+    .fake-check {
+      width: 17px; height: 17px; border-radius: 5px;
+      border: 1px solid #cdbfaf; background: #fffefa;
+      display: inline-flex; align-items: center; justify-content: center;
+      flex: 0 0 auto; margin-top: 3px; font-size: 12px; color: var(--green);
+    }
+    .fake-check.checked { background: #ecfbf5; border-color: #8bc9b5; }
+    .item-desc { margin: 8px 0 0; color: #4f493f; font-size: 14px; }
+    .date-board { display: none; }
+    .date-view .date-board { display: block; }
+    .date-view #timeline, .date-view .add-stage-btn { display: none; }
+    .date-panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .date-panel-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center;
+    }
+    .date-panel-head h2 { margin: 0; font-size: 19px; font-weight: 800; }
+    .date-list { padding: 8px 18px 18px; }
+    .date-row {
+      display: grid;
+      grid-template-columns: 150px 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 13px 0;
+      border-bottom: 1px solid #eee4d8;
+    }
+    .date-row:last-child { border-bottom: 0; }
+    .date-row-title { font-weight: 800; margin-bottom: 2px; }
+    .date-row-meta { color: var(--muted); font-size: 13px; }
+    .date-row .rich-text { margin-top: 5px; }
+    .editor-help { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
     .screenshot-mode .edit-only { display: none !important; }
     .screenshot-mode .screenshot-exit { display: block !important; }
     .screenshot-mode header { position: static; }
@@ -345,6 +405,8 @@
       .stage-header, .item-top { grid-template-columns: 1fr; }
       .stage-actions { justify-content: flex-start; }
       .subtask { grid-template-columns: 1fr; gap: 2px; }
+      .date-row { grid-template-columns: 1fr; gap: 5px; }
+      .view-controls { justify-content: flex-start; }
       .form-grid { grid-template-columns: 1fr; }
     }
 
@@ -375,7 +437,11 @@
 
   <section class="bar">
     <div class="filters" id="filters"></div>
-    <div class="summary" id="summaryText">請選擇對象檢視相關安排；可多選，也可看全部。</div>
+    <div class="view-controls">
+      <button id="timelineViewBtn" class="view-toggle active" type="button">時間軸</button>
+      <button id="dateViewBtn" class="view-toggle" type="button">日期總表</button>
+      <div class="summary" id="summaryText">請選擇對象檢視相關安排；可多選，也可看全部。</div>
+    </div>
   </section>
 
   <main>
@@ -389,6 +455,7 @@
     </div>
 
     <section id="timeline"></section>
+    <section id="dateBoard" class="date-board"></section>
 
     <div class="fab-row edit-only">
       <button class="add-stage-btn" id="addStageBottomBtn">＋ 在最下方新增階段</button>
@@ -432,15 +499,20 @@
           <div class="form-row"><label>狀態</label><select id="itemStatusInput"></select></div>
         </div>
         <div class="form-grid">
+          <div class="form-row"><label>日期類型</label><select id="itemDateTypeInput"></select></div>
           <div class="form-row"><label>開始日期</label><input id="itemStartInput" type="date" /></div>
-          <div class="form-row"><label>結束日期</label><input id="itemEndInput" type="date" /></div>
+          <div class="form-row"><label>結束／截止日期</label><input id="itemEndInput" type="date" /></div>
         </div>
         <div class="form-row"><label>對象，可複選</label><div class="checks" id="audienceChecks"></div></div>
         <div class="form-grid">
           <div class="form-row"><label>負責人</label><input id="itemOwnerInput" type="text" placeholder="例如：玢潔、園長、班級老師" /></div>
           <div class="form-row"><label>地點／班級</label><input id="itemPlaceInput" type="text" placeholder="例如：合作幼兒園、大班教室" /></div>
         </div>
-        <div class="form-row"><label>簡短說明</label><textarea id="itemDescInput" placeholder="可寫這個事項的目的或流程"></textarea></div>
+        <div class="form-row"><label>詳細說明／備註</label><textarea id="itemDescInput" placeholder="可換行，也可輸入：
+- 項目
+1. 編號項目
+[ ] 待勾選事項
+[x] 已完成事項"></textarea><div class="editor-help">支援換行、項目符號、編號，以及 [ ] / [x] 勾選清單。</div></div>
         <div class="form-row">
           <label>子任務／時間節點</label>
           <div id="subtaskEditors"></div>
@@ -490,6 +562,7 @@
   const STORAGE_KEY = 'fuurinResearchTimelinePlanner.v1';
   const audiences = ['幼兒園', '家長／研究對象', '教學老師', '研究團隊', 'IRB／文件', '資料分析'];
   const statuses = ['待確認', '待辦', '進行中', '完成', '延期', '等待IRB', '無'];
+  const dateTypes = ['執行期間', '執行日期', '截止日期', '提醒日期', '會議時間', '資料回收'];
 
   const sampleData = {
     meta: {
@@ -550,6 +623,7 @@
 
   let data = loadData();
   let selectedAudiences = new Set(['全部']);
+  let currentView = 'timeline';
 
   const $ = (id) => document.getElementById(id);
   const timeline = $('timeline');
@@ -651,6 +725,41 @@
   function escapeHTML(str='') {
     return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
   }
+  function dateTypeLabel(type) {
+    return type || '執行期間';
+  }
+  function dateBadge(type, start, end) {
+    const label = dateTypeLabel(type || ((start && end && start !== end) ? '執行期間' : '執行日期'));
+    const text = fmtRange(start, end);
+    return `<span class="date-badge date-${escapeHTML(label)}"><span class="date-kind">${escapeHTML(label)}</span>${escapeHTML(text)}</span>`;
+  }
+  function renderRichText(text='') {
+    const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+    let html = '';
+    let mode = null;
+    const close = () => { if (mode) { html += mode === 'ul' ? '</ul>' : '</ol>'; mode = null; } };
+    for (const raw of lines) {
+      const line = raw.trimEnd();
+      const trimmed = line.trim();
+      if (!trimmed) { close(); html += '<p></p>'; continue; }
+      let m;
+      if ((m = trimmed.match(/^\[( |x|X)\]\s*(.*)$/))) {
+        close();
+        const checked = m[1].toLowerCase() === 'x';
+        html += `<div class="checkline"><span class="fake-check ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</span><span>${escapeHTML(m[2])}</span></div>`;
+      } else if ((m = trimmed.match(/^[-•]\s+(.*)$/))) {
+        if (mode !== 'ul') { close(); html += '<ul>'; mode = 'ul'; }
+        html += `<li>${escapeHTML(m[1])}</li>`;
+      } else if ((m = trimmed.match(/^\d+[.)]\s+(.*)$/))) {
+        if (mode !== 'ol') { close(); html += '<ol>'; mode = 'ol'; }
+        html += `<li>${escapeHTML(m[1])}</li>`;
+      } else {
+        close(); html += `<p>${escapeHTML(trimmed)}</p>`;
+      }
+    }
+    close();
+    return html;
+  }
   function statusClass(status) { return 'status-' + (status || '無').replace(/\s+/g, ''); }
   function audienceClass(a='') { return 'aud-' + String(a).replace(/[／\/\s]/g, ''); }
   function mainAudienceClass(arr=[]) { return arr.length ? audienceClass(arr[0]) : ''; }
@@ -664,8 +773,11 @@
     $('siteTitle').textContent = data.meta.title;
     $('siteSubtitle').textContent = data.meta.subtitle;
     $('noticeText').textContent = data.meta.notice;
+    document.body.classList.toggle('date-view', currentView === 'date');
     renderFilters();
+    renderViewControls();
     renderTimeline();
+    renderDateBoard();
     saveData();
   }
 
@@ -692,6 +804,14 @@
     const active = selectedAudiences.has('全部') ? '全部對象' : [...selectedAudiences].join('、');
     $('summaryText').textContent = `目前顯示：${active}。可用截圖模式隱藏編輯按鈕。`;
   }
+  function renderViewControls() {
+    $('timelineViewBtn')?.classList.toggle('active', currentView === 'timeline');
+    $('dateViewBtn')?.classList.toggle('active', currentView === 'date');
+  }
+
+  $('timelineViewBtn')?.addEventListener('click', () => { currentView = 'timeline'; renderAll(); });
+  $('dateViewBtn')?.addEventListener('click', () => { currentView = 'date'; renderAll(); });
+
 
   function renderTimeline() {
     timeline.innerHTML = '';
@@ -749,8 +869,8 @@
       <div class="item-top">
         <div>
           <p class="item-title">${escapeHTML(item.title)}</p>
-          <div class="item-meta"><span class="date-badge">${fmtRange(item.start, item.end)}</span>${item.owner ? '｜負責：' + escapeHTML(item.owner) : ''}${item.place ? '｜' + escapeHTML(item.place) : ''}</div>
-          ${item.desc && showWhole ? `<p class="item-desc">${escapeHTML(item.desc)}</p>` : ''}
+          <div class="item-meta">${dateBadge(item.dateType, item.start, item.end)}${item.owner ? '｜負責：' + escapeHTML(item.owner) : ''}${item.place ? '｜' + escapeHTML(item.place) : ''}</div>
+          ${item.desc && showWhole ? `<div class="rich-text">${renderRichText(item.desc)}</div>` : ''}
           <div class="tags">${audienceTags(item.audiences || [])}</div>
         </div>
         <div class="stage-actions">
@@ -762,10 +882,11 @@
       <div class="subtasks">
         ${filteredSubtasks.length ? filteredSubtasks.map(st => `
           <div class="subtask">
-            <div class="sub-date"><span class="date-badge">${fmtDate(st.date) || '未設定'}</span></div>
+            <div class="sub-date">${dateBadge(st.dateType || '執行日期', st.date, st.date)}</div>
             <div class="sub-text">
               <strong>${escapeHTML(st.text)}</strong>
-              <div class="sub-note">${st.owner ? '負責：' + escapeHTML(st.owner) : ''}${st.owner && st.note ? '｜' : ''}${st.note ? escapeHTML(st.note) : ''}</div>
+              ${st.note ? `<div class="rich-text">${renderRichText(st.note)}</div>` : ''}
+              <div class="sub-note">${st.owner ? '負責：' + escapeHTML(st.owner) : ''}</div>
               <div class="tags">${audienceTags(st.audiences || [])}</div>
             </div>
             <span class="pill ${statusClass(st.status)}">${escapeHTML(st.status || '無')}</span>
@@ -776,8 +897,73 @@
     return el;
   }
 
+  function collectDateEntries() {
+    const entries = [];
+    data.items.forEach(item => {
+      const stage = data.stages.find(s => s.id === item.stageId);
+      const itemVisible = selectedAudiences.has('全部') || intersects(item.audiences || []);
+      if (itemVisible) {
+        entries.push({
+          kind: '主事項', date: item.start || item.end || '', end: item.end || item.start || '', dateType: item.dateType || ((item.start && item.end && item.start !== item.end) ? '執行期間' : '執行日期'),
+          title: item.title, detail: item.desc, stageTitle: stage?.title || '未分類階段', itemTitle: item.title,
+          owner: item.owner, status: item.status, audiences: item.audiences || []
+        });
+      }
+      (item.subtasks || []).forEach(st => {
+        if (!selectedAudiences.has('全部') && !intersects(st.audiences || [])) return;
+        entries.push({
+          kind: '子任務', date: st.date || '', end: st.date || '', dateType: st.dateType || '執行日期',
+          title: st.text || '(未命名子任務)', detail: st.note, stageTitle: stage?.title || '未分類階段', itemTitle: item.title,
+          owner: st.owner || item.owner, status: st.status, audiences: st.audiences || []
+        });
+      });
+    });
+    entries.sort((a,b) => {
+      const ad = a.date || '9999-12-31';
+      const bd = b.date || '9999-12-31';
+      if (ad !== bd) return ad.localeCompare(bd);
+      return (a.title || '').localeCompare(b.title || '');
+    });
+    return entries;
+  }
+
+  function renderDateBoard() {
+    const board = $('dateBoard');
+    if (!board) return;
+    const entries = collectDateEntries();
+    const active = selectedAudiences.has('全部') ? '全部對象' : [...selectedAudiences].join('、');
+    board.innerHTML = `
+      <div class="date-panel">
+        <div class="date-panel-head">
+          <div>
+            <h2>依日期排列總表</h2>
+            <div class="stage-meta">目前顯示：${escapeHTML(active)}｜依開始日期／截止日期排序，方便確認同一時間點要完成的事項。</div>
+          </div>
+          <span class="pill status-進行中">共 ${entries.length} 筆</span>
+        </div>
+        <div class="date-list">
+          ${entries.length ? entries.map(en => `
+            <div class="date-row">
+              <div>${dateBadge(en.dateType, en.date, en.end)}</div>
+              <div>
+                <div class="date-row-title">${escapeHTML(en.title)}</div>
+                <div class="date-row-meta">${escapeHTML(en.kind)}｜${escapeHTML(en.stageTitle)}｜所屬事項：${escapeHTML(en.itemTitle)}${en.owner ? '｜負責：' + escapeHTML(en.owner) : ''}</div>
+                ${en.detail ? `<div class="rich-text">${renderRichText(en.detail)}</div>` : ''}
+                <div class="tags">${audienceTags(en.audiences || [])}</div>
+              </div>
+              <span class="pill ${statusClass(en.status)}">${escapeHTML(en.status || '無')}</span>
+            </div>
+          `).join('') : '<div class="empty">目前沒有可依日期顯示的事項。</div>'}
+        </div>
+      </div>
+    `;
+  }
+
   function fillStatusSelect(select, value='待辦') {
     select.innerHTML = statuses.map(s => `<option value="${s}" ${s===value?'selected':''}>${s}</option>`).join('');
+  }
+  function fillDateTypeSelect(select, value='執行期間') {
+    select.innerHTML = dateTypes.map(t => `<option value="${t}" ${t===value?'selected':''}>${t}</option>`).join('');
   }
   function fillAudienceChecks(container, selected=[]) {
     container.innerHTML = audiences.map(a => `<label class="check"><input type="checkbox" value="${a}" ${selected.includes(a)?'checked':''}>${a}</label>`).join('');
@@ -825,17 +1011,19 @@
     div.dataset.id = st.id || uid();
     div.innerHTML = `
       <div class="form-grid">
+        <div class="form-row"><label>日期類型</label><select class="st-date-type"></select></div>
         <div class="form-row"><label>日期</label><input class="st-date" type="date" value="${escapeHTML(st.date || '')}" /></div>
         <div class="form-row"><label>狀態</label><select class="st-status"></select></div>
       </div>
-      <div class="form-row"><label>任務內容</label><input class="st-text" type="text" value="${escapeHTML(st.text || '')}" placeholder="例如：幼兒園協助發放給家長" /></div>
+      <div class="form-row"><label>任務內容</label><textarea class="st-text" placeholder="例如：幼兒園協助發放給家長">${escapeHTML(st.text || '')}</textarea></div>
       <div class="form-row"><label>對象，可複選</label><div class="checks st-audiences"></div></div>
       <div class="form-grid">
         <div class="form-row"><label>負責人</label><input class="st-owner" type="text" value="${escapeHTML(st.owner || '')}" /></div>
-        <div class="form-row"><label>備註</label><input class="st-note" type="text" value="${escapeHTML(st.note || '')}" /></div>
+        <div class="form-row"><label>詳細備註</label><textarea class="st-note" placeholder="可換行，也可輸入：\n- 項目\n1. 編號項目\n[ ] 待勾選事項\n[x] 已完成事項">${escapeHTML(st.note || '')}</textarea><div class="editor-help">支援換行、項目符號、編號，以及 [ ] / [x] 勾選清單。</div></div>
       </div>
       <button type="button" class="small danger remove-subtask">刪除此子任務</button>
     `;
+    fillDateTypeSelect(div.querySelector('.st-date-type'), st.dateType || '執行日期');
     fillStatusSelect(div.querySelector('.st-status'), st.status || '待辦');
     fillAudienceChecks(div.querySelector('.st-audiences'), st.audiences || []);
     div.querySelector('.remove-subtask').onclick = () => div.remove();
@@ -848,6 +1036,7 @@
     $('itemTitleInput').value = item?.title || '';
     $('itemStageInput').innerHTML = data.stages.map(s => `<option value="${s.id}" ${(item?.stageId || stageId) === s.id ? 'selected' : ''}>${escapeHTML(s.title)}</option>`).join('');
     fillStatusSelect($('itemStatusInput'), item?.status || '待辦');
+    fillDateTypeSelect($('itemDateTypeInput'), item?.dateType || '執行期間');
     $('itemStartInput').value = item?.start || '';
     $('itemEndInput').value = item?.end || '';
     fillAudienceChecks($('audienceChecks'), item?.audiences || []);
@@ -863,12 +1052,12 @@
     e.preventDefault();
     const id = $('itemId').value;
     const subtasks = [...$('subtaskEditors').querySelectorAll('.subtask-editor')].map(div => ({
-      id: div.dataset.id || uid(), date: div.querySelector('.st-date').value,
+      id: div.dataset.id || uid(), dateType: div.querySelector('.st-date-type').value, date: div.querySelector('.st-date').value,
       text: div.querySelector('.st-text').value.trim(), audiences: getCheckedAudiences(div.querySelector('.st-audiences')),
       owner: div.querySelector('.st-owner').value.trim(), status: div.querySelector('.st-status').value, note: div.querySelector('.st-note').value.trim()
     })).filter(st => st.text || st.date || st.note);
     const payload = {
-      id: id || uid(), stageId: $('itemStageInput').value, title: $('itemTitleInput').value.trim(), status: $('itemStatusInput').value,
+      id: id || uid(), stageId: $('itemStageInput').value, title: $('itemTitleInput').value.trim(), status: $('itemStatusInput').value, dateType: $('itemDateTypeInput').value,
       start: $('itemStartInput').value, end: $('itemEndInput').value, audiences: getCheckedAudiences($('audienceChecks')),
       owner: $('itemOwnerInput').value.trim(), place: $('itemPlaceInput').value.trim(), desc: $('itemDescInput').value.trim(), subtasks
     };
