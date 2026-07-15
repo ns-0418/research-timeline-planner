@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>研究執行時間軸 v4</title>
+  <style>
+    :root {
+      --bg: #f5f1ea;
+      --paper: #fffdf8;
+      --paper-2: #fbf8f1;
+      --ink: #28231b;
+      --muted: #736b61;
+      --line: #dfd5c8;
+      --deep: #3b3021;
+      --deep-2: #4c412f;
+      --accent: #7a6ee6;
+      --green: #269c7e;
+      --orange: #d7673f;
+      --blue: #2c6ea7;
+      --red: #bb4b4b;
+      --pink: #c45a87;
+      --teal: #1f8d91;
+      --yellow: #d6a326;
+      --lavender: #8b6fd6;
+      --brown: #9a6b42;
+      --shadow: 0 10px 25px rgba(43, 34, 23, .07);
+      --radius: 18px;
+      font-family: ui-serif, "Noto Serif TC", "Source Han Serif TC", "PMingLiU", Georgia, serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: transform .08s ease, background .12s ease, border .12s ease;
+    }
+    button:hover { background: #fff; border-color: #cabaa8; }
+    button:active { transform: translateY(1px); }
+    button.primary { background: var(--deep); color: white; border-color: var(--deep); }
+    button.primary:hover { background: var(--deep-2); }
+    button.ghost { background: transparent; }
+    button.danger { color: var(--red); border-color: #e2b5b5; }
+    button.small { padding: 4px 8px; border-radius: 10px; font-size: 13px; }
+    .screenshot-exit {
+      display: none;
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 999;
+      box-shadow: 0 12px 28px rgba(36, 29, 20, .20);
+      background: var(--deep);
+      color: white;
+      border-color: var(--deep);
+    }
+
+    header {
+      background: var(--deep);
+      color: #fff;
+      padding: 22px 32px 20px;
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: flex-start;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 0 rgba(255,255,255,.08) inset;
+    }
+    .title h1 { margin: 0; font-size: 24px; letter-spacing: .03em; }
+    .title p { margin: 4px 0 0; color: #e8e0d4; font-size: 14px; }
+    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+    .bar {
+      background: var(--paper-2);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 32px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .filters span.label { color: var(--muted); font-size: 14px; margin-right: 2px; }
+    .filter-chip {
+      border: 1px solid var(--line);
+      background: #fffbf4;
+      color: var(--deep);
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 14px;
+      user-select: none;
+    }
+    .filter-chip.active { background: var(--deep); color: #fff; border-color: var(--deep); }
+    .summary { color: var(--muted); font-size: 14px; text-align: right; max-width: 560px; }
+
+    main {
+      width: min(1120px, calc(100% - 36px));
+      margin: 26px auto 60px;
+    }
+
+    .notice {
+      margin: 0 auto 20px;
+      background: rgba(255,255,255,.55);
+      border: 1px dashed #cdbfaf;
+      border-radius: 16px;
+      padding: 14px 18px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .stage {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin: 0 0 20px;
+      overflow: hidden;
+    }
+    .stage-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+    }
+    .stage-title {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .drag-handle { color: #b4a89b; font-size: 18px; }
+    .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+    .dot.purple { background: var(--accent); }
+    .dot.green { background: var(--green); }
+    .dot.orange { background: var(--orange); }
+    .dot.blue { background: var(--blue); }
+    .dot.red { background: var(--red); }
+    .dot.pink { background: var(--pink); }
+    .dot.teal { background: var(--teal); }
+    .dot.yellow { background: var(--yellow); }
+    .dot.lavender { background: var(--lavender); }
+    .dot.brown { background: var(--brown); }
+    .stage.color-purple { border-top: 5px solid var(--accent); }
+    .stage.color-green { border-top: 5px solid var(--green); }
+    .stage.color-orange { border-top: 5px solid var(--orange); }
+    .stage.color-blue { border-top: 5px solid var(--blue); }
+    .stage.color-red { border-top: 5px solid var(--red); }
+    .stage.color-pink { border-top: 5px solid var(--pink); }
+    .stage.color-teal { border-top: 5px solid var(--teal); }
+    .stage.color-yellow { border-top: 5px solid var(--yellow); }
+    .stage.color-lavender { border-top: 5px solid var(--lavender); }
+    .stage.color-brown { border-top: 5px solid var(--brown); }
+    .stage h2 { margin: 0; font-size: 19px; letter-spacing: .02em; }
+    .stage-meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
+    .stage-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+
+    .pill {
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 13px;
+      white-space: nowrap;
+      background: #fff;
+    }
+    .status-待確認, .status-待辦 { color: #b27612; background: #fff8e5; }
+    .status-進行中 { color: #2f77a5; background: #edf7ff; }
+    .status-完成 { color: #178a68; background: #ecfbf5; }
+    .status-延期 { color: #bd5038; background: #fff1ec; }
+    .status-等待IRB { color: #6d61d8; background: #f0efff; }
+    .status-無 { color: #756d63; background: #f8f5ef; }
+
+    .items { padding: 14px 18px 18px; }
+    .item {
+      border: 1px solid #eadfd2;
+      background: linear-gradient(90deg, rgba(255,255,255,.97), rgba(255,253,248,.98));
+      border-radius: 15px;
+      padding: 14px 16px;
+      margin: 12px 0;
+      border-left: 7px solid #c8b8a7;
+    }
+    .item.aud-幼兒園 { border-left-color: var(--teal); }
+    .item.aud-家長研究對象 { border-left-color: var(--pink); }
+    .item.aud-教學老師 { border-left-color: var(--yellow); }
+    .item.aud-研究團隊 { border-left-color: var(--accent); }
+    .item.aud-IRB文件 { border-left-color: var(--orange); }
+    .item.aud-資料分析 { border-left-color: var(--blue); }
+    .item-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: start;
+    }
+    .item-title { font-size: 17px; font-weight: 700; margin: 0; }
+    .item-meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .item-desc { margin: 8px 0 0; color: #4f493f; font-size: 14px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
+    .tag { border: 1px solid #ded2c5; border-radius: 999px; padding: 2px 8px; font-size: 12px; color: #5d554a; background: #fbf6ec; }
+    .tag.aud-幼兒園 { color: #176c70; background: #eaf8f7; border-color: #b9dddd; }
+    .tag.aud-家長研究對象 { color: #a23e68; background: #fff0f6; border-color: #e7b8cc; }
+    .tag.aud-教學老師 { color: #99711b; background: #fff8df; border-color: #e5cd80; }
+    .tag.aud-研究團隊 { color: #6357c5; background: #f1efff; border-color: #c7c1f0; }
+    .tag.aud-IRB文件 { color: #bd5038; background: #fff1ec; border-color: #e4b2a5; }
+    .tag.aud-資料分析 { color: #2b6696; background: #eef7ff; border-color: #b8d4ea; }
+    .date-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 88px;
+      border-radius: 999px;
+      padding: 3px 9px;
+      border: 1px solid #d8c8b8;
+      background: #fff8e9;
+      color: #7b5930;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+    }
+    .subtasks { margin: 12px 0 0; border-top: 1px dashed #dfd1c2; padding-top: 10px; }
+    .subtask {
+      display: grid;
+      grid-template-columns: 115px 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0e7dc;
+      font-size: 14px;
+    }
+    .subtask:last-child { border-bottom: 0; }
+    .sub-date { font-variant-numeric: tabular-nums; }
+    .sub-text strong { font-weight: 700; }
+    .sub-note { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    .empty { color: var(--muted); text-align: center; padding: 22px; }
+
+    .fab-row { display: flex; justify-content: center; margin: 20px 0; }
+    .add-stage-btn { border-style: dashed; padding: 13px 28px; color: var(--muted); }
+
+    dialog {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 0;
+      width: min(760px, calc(100% - 26px));
+      box-shadow: 0 24px 70px rgba(38, 31, 22, .28);
+      background: var(--paper);
+    }
+    dialog::backdrop { background: rgba(30, 24, 18, .35); backdrop-filter: blur(2px); }
+    .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    .modal-head h3 { margin: 0; font-size: 20px; }
+    .modal-body { padding: 18px 22px 22px; max-height: min(78vh, 820px); overflow: auto; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-row { margin-bottom: 14px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+    input[type="text"], input[type="date"], select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fffefa;
+      border-radius: 12px;
+      padding: 9px 10px;
+      color: var(--ink);
+    }
+    textarea { min-height: 78px; resize: vertical; }
+    .checks { display: flex; gap: 8px; flex-wrap: wrap; }
+    .check {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #fffefa;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .subtask-editor {
+      background: #fbf7ef;
+      border: 1px solid #eadfd2;
+      border-radius: 14px;
+      padding: 12px;
+      margin: 10px 0;
+    }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+    #confirmDialog { width: min(460px, calc(100% - 30px)); }
+    #confirmMessage { margin: 0; color: #4f493f; line-height: 1.8; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: var(--deep);
+      color: white;
+      border-radius: 999px;
+      padding: 10px 16px;
+      box-shadow: 0 14px 32px rgba(36, 29, 20, .24);
+      z-index: 1200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, bottom .18s ease;
+      font-size: 14px;
+    }
+    .toast.show { opacity: 1; bottom: 34px; }
+
+    .screenshot-mode .edit-only { display: none !important; }
+    .screenshot-mode .screenshot-exit { display: block !important; }
+    .screenshot-mode header { position: static; }
+    .screenshot-mode .bar { position: static; }
+    .screenshot-mode main { width: min(1050px, calc(100% - 24px)); margin-top: 20px; }
+    .screenshot-mode .stage { box-shadow: none; page-break-inside: avoid; }
+    .screenshot-mode .item { page-break-inside: avoid; }
+
+    @media (max-width: 760px) {
+      header { padding: 18px 18px; display: block; }
+      .top-actions { justify-content: flex-start; margin-top: 12px; }
+      .bar { padding: 12px 18px; }
+      .summary { text-align: left; }
+      .stage-header, .item-top { grid-template-columns: 1fr; }
+      .stage-actions { justify-content: flex-start; }
+      .subtask { grid-template-columns: 1fr; gap: 2px; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      .edit-only { display: none !important; }
+      header, .bar { position: static; }
+      body { background: #fff; }
+      main { width: 100%; margin: 0; }
+      .stage { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title">
+      <h1 id="siteTitle">研究執行時間軸</h1>
+      <p id="siteSubtitle">2026－2027｜目標：2027 年 3 月口試</p>
+    </div>
+    <div class="top-actions edit-only">
+      <button id="settingsBtn">設定</button>
+      <button id="exportBtn">匯出 JSON</button>
+      <button id="importBtn">匯入 JSON</button>
+      <button id="screenshotBtn" class="primary">截圖模式</button>
+      <input id="fileInput" type="file" accept="application/json" hidden />
+    </div>
+  </header>
+  <button id="exitScreenshotFloating" class="screenshot-exit">離開截圖模式</button>
+
+  <section class="bar">
+    <div class="filters" id="filters"></div>
+    <div class="summary" id="summaryText">請選擇對象檢視相關安排；可多選，也可看全部。</div>
+  </section>
+
+  <main>
+    <div class="notice">
+      <div id="noticeText">目前狀態：IRB 核准後進行園所協調與正式收案。</div>
+      <button class="small edit-only" id="addItemTopBtn">＋新增事項</button>
+    </div>
+
+    <div class="fab-row edit-only">
+      <button class="add-stage-btn" id="addStageTopBtn">＋ 在最上方新增階段</button>
+    </div>
+
+    <section id="timeline"></section>
+
+    <div class="fab-row edit-only">
+      <button class="add-stage-btn" id="addStageBottomBtn">＋ 在最下方新增階段</button>
+    </div>
+  </main>
+
+  <dialog id="stageDialog">
+    <form method="dialog" id="stageForm">
+      <div class="modal-head">
+        <h3 id="stageDialogTitle">新增階段</h3>
+        <button value="cancel" class="small ghost">關閉</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="stageId" />
+        <div class="form-row"><label>階段名稱</label><input id="stageTitleInput" type="text" placeholder="例如：研究說明與家長同意書" required /></div>
+        <div class="form-grid">
+          <div class="form-row"><label>開始日期</label><input id="stageStartInput" type="date" /></div>
+          <div class="form-row"><label>結束日期</label><input id="stageEndInput" type="date" /></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>狀態</label><select id="stageStatusInput"></select></div>
+          <div class="form-row"><label>色點</label><select id="stageColorInput"><option value="purple">紫</option><option value="green">綠</option><option value="orange">橘</option><option value="blue">藍</option><option value="red">紅</option><option value="pink">粉</option><option value="teal">青綠</option><option value="yellow">黃</option><option value="lavender">薰衣草</option><option value="brown">棕</option></select></div>
+        </div>
+        <div class="form-row"><label>階段說明</label><textarea id="stageDescInput" placeholder="可簡短說明此階段目標"></textarea></div>
+        <div class="modal-actions"><button value="cancel">取消</button><button class="primary" id="saveStageBtn" value="default">儲存階段</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="itemDialog">
+    <form method="dialog" id="itemForm">
+      <div class="modal-head">
+        <h3 id="itemDialogTitle">新增事項</h3>
+        <button value="cancel" class="small ghost">關閉</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="itemId" />
+        <div class="form-row"><label>主事項名稱</label><input id="itemTitleInput" type="text" placeholder="例如：家長同意書發放與回收" required /></div>
+        <div class="form-grid">
+          <div class="form-row"><label>所屬階段</label><select id="itemStageInput"></select></div>
+          <div class="form-row"><label>狀態</label><select id="itemStatusInput"></select></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-row"><label>開始日期</label><input id="itemStartInput" type="date" /></div>
+          <div class="form-row"><label>結束日期</label><input id="itemEndInput" type="date" /></div>
+        </div>
+        <div class="form-row"><label>對象，可複選</label><div class="checks" id="audienceChecks"></div></div>
+        <div class="form-grid">
+          <div class="form-row"><label>負責人</label><input id="itemOwnerInput" type="text" placeholder="例如：玢潔、園長、班級老師" /></div>
+          <div class="form-row"><label>地點／班級</label><input id="itemPlaceInput" type="text" placeholder="例如：合作幼兒園、大班教室" /></div>
+        </div>
+        <div class="form-row"><label>簡短說明</label><textarea id="itemDescInput" placeholder="可寫這個事項的目的或流程"></textarea></div>
+        <div class="form-row">
+          <label>子任務／時間節點</label>
+          <div id="subtaskEditors"></div>
+          <button type="button" id="addSubtaskBtn" class="small">＋新增子任務</button>
+        </div>
+        <div class="modal-actions"><button value="cancel">取消</button><button class="primary" id="saveItemBtn" value="default">儲存事項</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" id="settingsForm">
+      <div class="modal-head">
+        <h3>網站設定</h3>
+        <button value="cancel" class="small ghost">關閉</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row"><label>標題</label><input id="settingTitle" type="text" /></div>
+        <div class="form-row"><label>副標</label><input id="settingSubtitle" type="text" /></div>
+        <div class="form-row"><label>目前狀態文字</label><textarea id="settingNotice"></textarea></div>
+        <div class="modal-actions"><button value="cancel">取消</button><button class="primary" value="default" id="saveSettingsBtn">儲存設定</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <form method="dialog" id="confirmForm">
+      <div class="modal-head">
+        <h3 id="confirmTitle">確認操作</h3>
+        <button value="cancel" class="small ghost" id="confirmCloseBtn" type="button">關閉</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirmMessage">確定要執行這個操作嗎？</p>
+        <div class="modal-actions">
+          <button value="cancel" id="confirmCancelBtn" type="button">取消</button>
+          <button class="primary danger" id="confirmOkBtn" type="button">確定刪除</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+
+<script>
+(() => {
+  const STORAGE_KEY = 'fuurinResearchTimelinePlanner.v1';
+  const audiences = ['幼兒園', '家長／研究對象', '教學老師', '研究團隊', 'IRB／文件', '資料分析'];
+  const statuses = ['待確認', '待辦', '進行中', '完成', '延期', '等待IRB', '無'];
+
+  const sampleData = {
+    meta: {
+      title: '研究執行時間軸',
+      subtitle: '2026－2027｜目標：2027 年 3 月口試',
+      notice: '目前狀態：IRB 核准後進行園所協調與正式收案。'
+    },
+    stages: [
+      {
+        id: uid(), title: '階段一｜IRB 核准與園所確認', start: '2026-07-01', end: '2026-07-31', status: '待確認', color: 'purple', desc: '完成倫理審查文件確認，並與合作幼兒園確認正式執行安排。'
+      },
+      {
+        id: uid(), title: '階段二｜研究說明與家長同意書', start: '2026-08-01', end: '2026-08-15', status: '待辦', color: 'green', desc: '完成家長說明、同意書發放與回收，整理可納入研究名單。'
+      },
+      {
+        id: uid(), title: '階段三｜前測與正式課程介入', start: '2026-08-16', end: '2026-10-15', status: '待辦', color: 'orange', desc: '安排前測、課程進行、課後紀錄與後測。'
+      },
+      {
+        id: uid(), title: '階段四｜資料整理與論文撰寫', start: '2026-10-16', end: '2027-02-28', status: '待辦', color: 'blue', desc: '完成資料輸入、統計分析、結果撰寫與口試準備。'
+      }
+    ],
+    items: []
+  };
+  sampleData.items = [
+    {
+      id: uid(), stageId: sampleData.stages[0].id, title: '寄送園所合作公文與 IRB 核准資料',
+      start: '2026-07-10', end: '2026-07-15', status: '待確認', audiences: ['幼兒園', '研究團隊', 'IRB／文件'],
+      owner: '玢潔', place: '合作幼兒園', desc: '將學校公文、新光醫院 IRB 核准證明與研究相關文件提供園所留存。',
+      subtasks: [
+        {id: uid(), date: '2026-07-10', text: '確認 IRB 核准文件、案號與可檢附資料', audiences: ['研究團隊', 'IRB／文件'], owner: '玢潔', status: '待確認', note: '若尚未核准，文字需改為待核准後始執行。'},
+        {id: uid(), date: '2026-07-12', text: '完成學校公文內容與附件整理', audiences: ['研究團隊'], owner: '玢潔', status: '待辦', note: ''},
+        {id: uid(), date: '2026-07-15', text: '寄送公文與附件給幼兒園', audiences: ['幼兒園', '研究團隊'], owner: '玢潔', status: '待辦', note: '寄送後可再用 LINE 簡短告知園長。'}
+      ]
+    },
+    {
+      id: uid(), stageId: sampleData.stages[1].id, title: '家長同意書發放與回收',
+      start: '2026-08-01', end: '2026-08-15', status: '待辦', audiences: ['幼兒園', '家長／研究對象', '教學老師', '研究團隊'],
+      owner: '玢潔、班級老師', place: '合作幼兒園', desc: '由研究團隊提供同意書，園方協助發放與回收，研究團隊整理同意名單。',
+      subtasks: [
+        {id: uid(), date: '2026-07-28', text: '玢潔提供同意書紙本與電子檔給幼兒園', audiences: ['幼兒園', '研究團隊'], owner: '玢潔', status: '待辦', note: '確認份數、班級與是否需要回收袋。'},
+        {id: uid(), date: '2026-08-01', text: '幼兒園協助發放給家長', audiences: ['幼兒園', '家長／研究對象', '教學老師'], owner: '班級老師', status: '待辦', note: '可放入書包或由老師發給家長。'},
+        {id: uid(), date: '2026-08-08', text: '提醒尚未繳回之家長', audiences: ['幼兒園', '家長／研究對象', '教學老師'], owner: '班級老師', status: '待辦', note: '提醒文字可由研究團隊提供。'},
+        {id: uid(), date: '2026-08-12', text: '玢潔至園所回收同意書', audiences: ['幼兒園', '研究團隊'], owner: '玢潔', status: '待辦', note: '同步確認同意與不同意名單。'},
+        {id: uid(), date: '2026-08-15', text: '整理收案名單與未回收名單', audiences: ['研究團隊'], owner: '玢潔', status: '待辦', note: ''}
+      ]
+    },
+    {
+      id: uid(), stageId: sampleData.stages[2].id, title: '前測施作與課程時段確認',
+      start: '2026-08-16', end: '2026-08-31', status: '待辦', audiences: ['幼兒園', '教學老師', '研究團隊', '家長／研究對象'],
+      owner: '玢潔、教學老師', place: '大班教室', desc: '確認前測日期、班級動線、施測方式與課程上課時段。',
+      subtasks: [
+        {id: uid(), date: '2026-08-16', text: '與園長確認可施測日期與上課教室', audiences: ['幼兒園', '研究團隊'], owner: '玢潔、園長', status: '待辦', note: ''},
+        {id: uid(), date: '2026-08-19', text: '進行幼兒前測', audiences: ['家長／研究對象', '教學老師', '研究團隊'], owner: '玢潔、教學老師', status: '待辦', note: '避免影響園所作息，時間需再與老師確認。'},
+        {id: uid(), date: '2026-08-22', text: '整理前測資料與缺漏名單', audiences: ['研究團隊', '資料分析'], owner: '玢潔', status: '待辦', note: ''}
+      ]
+    }
+  ];
+
+  let data = loadData();
+  let selectedAudiences = new Set(['全部']);
+
+  const $ = (id) => document.getElementById(id);
+  const timeline = $('timeline');
+  let pendingConfirmAction = null;
+  let toastTimer = null;
+
+  function showToast(message) {
+    const toast = $('toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  function requestConfirm(message, onConfirm, options={}) {
+    const dialog = $('confirmDialog');
+    $('confirmTitle').textContent = options.title || '確認操作';
+    $('confirmMessage').textContent = message;
+    $('confirmOkBtn').textContent = options.okText || '確定刪除';
+    pendingConfirmAction = typeof onConfirm === 'function' ? onConfirm : null;
+    if (dialog.open) dialog.close();
+    dialog.showModal();
+  }
+
+  function closeConfirmDialog() {
+    pendingConfirmAction = null;
+    if ($('confirmDialog')?.open) $('confirmDialog').close();
+  }
+
+  $('confirmCancelBtn').addEventListener('click', closeConfirmDialog);
+  $('confirmCloseBtn').addEventListener('click', closeConfirmDialog);
+  $('confirmOkBtn').addEventListener('click', () => {
+    const action = pendingConfirmAction;
+    pendingConfirmAction = null;
+    if ($('confirmDialog')?.open) $('confirmDialog').close();
+    if (action) action();
+  });
+
+  document.querySelectorAll('dialog button[value="cancel"]').forEach(btn => {
+    btn.type = 'button';
+    btn.addEventListener('click', () => btn.closest('dialog')?.close());
+  });
+
+  // 強化刪除按鈕：用 pointerdown 與 click 雙重監聽，避免部分預覽環境吃掉 click 或瀏覽器原生 confirm 被擋。
+  let lastDeleteEvent = {key: '', time: 0};
+  function handleDeleteIntent(e) {
+    const deleteItemBtn = e.target.closest?.('[data-delete-item]');
+    const deleteStageBtn = e.target.closest?.('[data-delete-stage]');
+    if (!deleteItemBtn && !deleteStageBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const key = deleteItemBtn ? `item:${deleteItemBtn.dataset.deleteItem}` : `stage:${deleteStageBtn.dataset.deleteStage}`;
+    const now = Date.now();
+    if (lastDeleteEvent.key === key && now - lastDeleteEvent.time < 650) return;
+    lastDeleteEvent = {key, time: now};
+    if (deleteItemBtn) deleteItem(deleteItemBtn.dataset.deleteItem);
+    else deleteStage(deleteStageBtn.dataset.deleteStage);
+  }
+  document.addEventListener('pointerdown', handleDeleteIntent, true);
+  document.addEventListener('click', handleDeleteIntent, true);
+
+  timeline.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || !timeline.contains(btn)) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (btn.dataset.addItem) return openItemDialog(null, btn.dataset.addItem);
+    if (btn.dataset.editStage) return openStageDialog(data.stages.find(s => s.id === btn.dataset.editStage));
+    if (btn.dataset.deleteStage) return deleteStage(btn.dataset.deleteStage);
+    if (btn.dataset.editItem) return openItemDialog(data.items.find(i => i.id === btn.dataset.editItem));
+    if (btn.dataset.deleteItem) return deleteItem(btn.dataset.deleteItem);
+  });
+
+  function uid() { return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
+  function loadData() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return structuredClone(sampleData);
+      const parsed = JSON.parse(raw);
+      if (!parsed.meta || !Array.isArray(parsed.stages) || !Array.isArray(parsed.items)) throw new Error('bad data');
+      return parsed;
+    } catch (e) {
+      console.warn('讀取舊資料時發生問題，已載入範例資料。');
+      return structuredClone(sampleData);
+    }
+  }
+  function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  function fmtDate(d) {
+    if (!d) return '';
+    const [y,m,day] = d.split('-');
+    return `${y}/${Number(m)}/${Number(day)}`;
+  }
+  function fmtRange(start, end) {
+    if (start && end && start !== end) return `${fmtDate(start)}－${fmtDate(end)}`;
+    return fmtDate(start || end) || '未設定日期';
+  }
+  function escapeHTML(str='') {
+    return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
+  }
+  function statusClass(status) { return 'status-' + (status || '無').replace(/\s+/g, ''); }
+  function audienceClass(a='') { return 'aud-' + String(a).replace(/[／\/\s]/g, ''); }
+  function mainAudienceClass(arr=[]) { return arr.length ? audienceClass(arr[0]) : ''; }
+  function audienceTags(arr=[]) { return arr.map(a => `<span class="tag ${audienceClass(a)}">${escapeHTML(a)}</span>`).join(''); }
+  function intersects(arr=[]) {
+    if (selectedAudiences.has('全部')) return true;
+    return arr.some(a => selectedAudiences.has(a));
+  }
+
+  function renderAll() {
+    $('siteTitle').textContent = data.meta.title;
+    $('siteSubtitle').textContent = data.meta.subtitle;
+    $('noticeText').textContent = data.meta.notice;
+    renderFilters();
+    renderTimeline();
+    saveData();
+  }
+
+  function renderFilters() {
+    const filterBox = $('filters');
+    filterBox.innerHTML = '<span class="label">檢視：</span>';
+    ['全部', ...audiences].forEach(name => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-chip' + (selectedAudiences.has(name) ? ' active' : '');
+      btn.textContent = name;
+      btn.onclick = () => {
+        if (name === '全部') {
+          selectedAudiences = new Set(['全部']);
+        } else {
+          selectedAudiences.delete('全部');
+          if (selectedAudiences.has(name)) selectedAudiences.delete(name);
+          else selectedAudiences.add(name);
+          if (!selectedAudiences.size) selectedAudiences.add('全部');
+        }
+        renderAll();
+      };
+      filterBox.appendChild(btn);
+    });
+    const active = selectedAudiences.has('全部') ? '全部對象' : [...selectedAudiences].join('、');
+    $('summaryText').textContent = `目前顯示：${active}。可用截圖模式隱藏編輯按鈕。`;
+  }
+
+  function renderTimeline() {
+    timeline.innerHTML = '';
+    const sortedStages = data.stages;
+    let visibleCount = 0;
+
+    sortedStages.forEach(stage => {
+      const stageItems = data.items.filter(item => item.stageId === stage.id && intersects(item.audiences));
+      const visibleSubOnly = data.items.filter(item => item.stageId === stage.id && !intersects(item.audiences) && item.subtasks?.some(st => intersects(st.audiences)));
+      const allVisible = [...stageItems, ...visibleSubOnly];
+      if (!selectedAudiences.has('全部') && allVisible.length === 0) return;
+      visibleCount++;
+      const stageEl = document.createElement('article');
+      stageEl.className = 'stage color-' + (stage.color || 'purple');
+      stageEl.innerHTML = `
+        <div class="stage-header">
+          <div>
+            <div class="stage-title">
+              <span class="drag-handle edit-only">⠿</span>
+              <span class="dot ${escapeHTML(stage.color || 'purple')}"></span>
+              <div>
+                <h2>${escapeHTML(stage.title)}</h2>
+                <div class="stage-meta">${fmtRange(stage.start, stage.end)}${stage.desc ? '｜' + escapeHTML(stage.desc) : ''}</div>
+              </div>
+            </div>
+          </div>
+          <div class="stage-actions">
+            <span class="pill ${statusClass(stage.status)}">${escapeHTML(stage.status || '無')}</span>
+            <button type="button" class="small edit-only" data-add-item="${stage.id}">＋事項</button>
+            <button type="button" class="small edit-only" data-edit-stage="${stage.id}">編輯</button>
+            <button type="button" class="small danger edit-only" data-delete-stage="${stage.id}" onclick="event.preventDefault(); event.stopPropagation(); window.deleteStageSafe && window.deleteStageSafe(this.dataset.deleteStage); return false;">刪除</button>
+          </div>
+        </div>
+        <div class="items"></div>
+      `;
+      const itemsBox = stageEl.querySelector('.items');
+      const itemsForRender = selectedAudiences.has('全部') ? data.items.filter(i => i.stageId === stage.id) : allVisible;
+      if (!itemsForRender.length) {
+        itemsBox.innerHTML = `<div class="empty">這個階段目前沒有事項。</div>`;
+      } else {
+        itemsForRender.forEach(item => itemsBox.appendChild(renderItem(item)));
+      }
+      timeline.appendChild(stageEl);
+    });
+    if (!visibleCount) timeline.innerHTML = `<div class="empty">目前沒有符合篩選條件的事項。</div>`;
+
+  }
+
+  function renderItem(item) {
+    const filteredSubtasks = selectedAudiences.has('全部') ? (item.subtasks || []) : (item.subtasks || []).filter(st => intersects(st.audiences));
+    const showWhole = selectedAudiences.has('全部') || intersects(item.audiences);
+    const el = document.createElement('div');
+    el.className = 'item ' + mainAudienceClass(item.audiences || []);
+    el.innerHTML = `
+      <div class="item-top">
+        <div>
+          <p class="item-title">${escapeHTML(item.title)}</p>
+          <div class="item-meta"><span class="date-badge">${fmtRange(item.start, item.end)}</span>${item.owner ? '｜負責：' + escapeHTML(item.owner) : ''}${item.place ? '｜' + escapeHTML(item.place) : ''}</div>
+          ${item.desc && showWhole ? `<p class="item-desc">${escapeHTML(item.desc)}</p>` : ''}
+          <div class="tags">${audienceTags(item.audiences || [])}</div>
+        </div>
+        <div class="stage-actions">
+          <span class="pill ${statusClass(item.status)}">${escapeHTML(item.status || '無')}</span>
+          <button type="button" class="small edit-only" data-edit-item="${item.id}">編輯</button>
+          <button type="button" class="small danger edit-only" data-delete-item="${item.id}" onclick="event.preventDefault(); event.stopPropagation(); window.deleteItemSafe && window.deleteItemSafe(this.dataset.deleteItem); return false;">刪除</button>
+        </div>
+      </div>
+      <div class="subtasks">
+        ${filteredSubtasks.length ? filteredSubtasks.map(st => `
+          <div class="subtask">
+            <div class="sub-date"><span class="date-badge">${fmtDate(st.date) || '未設定'}</span></div>
+            <div class="sub-text">
+              <strong>${escapeHTML(st.text)}</strong>
+              <div class="sub-note">${st.owner ? '負責：' + escapeHTML(st.owner) : ''}${st.owner && st.note ? '｜' : ''}${st.note ? escapeHTML(st.note) : ''}</div>
+              <div class="tags">${audienceTags(st.audiences || [])}</div>
+            </div>
+            <span class="pill ${statusClass(st.status)}">${escapeHTML(st.status || '無')}</span>
+          </div>
+        `).join('') : '<div class="empty">尚未新增子任務。</div>'}
+      </div>
+    `;
+    return el;
+  }
+
+  function fillStatusSelect(select, value='待辦') {
+    select.innerHTML = statuses.map(s => `<option value="${s}" ${s===value?'selected':''}>${s}</option>`).join('');
+  }
+  function fillAudienceChecks(container, selected=[]) {
+    container.innerHTML = audiences.map(a => `<label class="check"><input type="checkbox" value="${a}" ${selected.includes(a)?'checked':''}>${a}</label>`).join('');
+  }
+  function getCheckedAudiences(container) {
+    return [...container.querySelectorAll('input:checked')].map(i => i.value);
+  }
+
+  function openStageDialog(stage=null, position='bottom') {
+    $('stageDialogTitle').textContent = stage ? '編輯階段' : '新增階段';
+    $('stageId').value = stage?.id || '';
+    $('stageTitleInput').value = stage?.title || '';
+    $('stageStartInput').value = stage?.start || '';
+    $('stageEndInput').value = stage?.end || '';
+    fillStatusSelect($('stageStatusInput'), stage?.status || '待辦');
+    $('stageColorInput').value = stage?.color || 'purple';
+    $('stageDescInput').value = stage?.desc || '';
+    $('saveStageBtn').dataset.position = position;
+    $('stageDialog').showModal();
+  }
+  $('stageForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = $('stageId').value;
+    const payload = {
+      id: id || uid(), title: $('stageTitleInput').value.trim(), start: $('stageStartInput').value, end: $('stageEndInput').value,
+      status: $('stageStatusInput').value, color: $('stageColorInput').value, desc: $('stageDescInput').value.trim()
+    };
+    if (!payload.title) return;
+    const idx = data.stages.findIndex(s => s.id === id);
+    if (idx >= 0) data.stages[idx] = payload;
+    else if ($('saveStageBtn').dataset.position === 'top') data.stages.unshift(payload);
+    else data.stages.push(payload);
+    $('stageDialog').close();
+    renderAll();
+  });
+
+  function renderSubtaskEditors(subtasks=[]) {
+    const box = $('subtaskEditors');
+    box.innerHTML = '';
+    subtasks.forEach(st => addSubtaskEditor(st));
+  }
+  function addSubtaskEditor(st={}) {
+    const div = document.createElement('div');
+    div.className = 'subtask-editor';
+    div.dataset.id = st.id || uid();
+    div.innerHTML = `
+      <div class="form-grid">
+        <div class="form-row"><label>日期</label><input class="st-date" type="date" value="${escapeHTML(st.date || '')}" /></div>
+        <div class="form-row"><label>狀態</label><select class="st-status"></select></div>
+      </div>
+      <div class="form-row"><label>任務內容</label><input class="st-text" type="text" value="${escapeHTML(st.text || '')}" placeholder="例如：幼兒園協助發放給家長" /></div>
+      <div class="form-row"><label>對象，可複選</label><div class="checks st-audiences"></div></div>
+      <div class="form-grid">
+        <div class="form-row"><label>負責人</label><input class="st-owner" type="text" value="${escapeHTML(st.owner || '')}" /></div>
+        <div class="form-row"><label>備註</label><input class="st-note" type="text" value="${escapeHTML(st.note || '')}" /></div>
+      </div>
+      <button type="button" class="small danger remove-subtask">刪除此子任務</button>
+    `;
+    fillStatusSelect(div.querySelector('.st-status'), st.status || '待辦');
+    fillAudienceChecks(div.querySelector('.st-audiences'), st.audiences || []);
+    div.querySelector('.remove-subtask').onclick = () => div.remove();
+    $('subtaskEditors').appendChild(div);
+  }
+
+  function openItemDialog(item=null, stageId=null) {
+    $('itemDialogTitle').textContent = item ? '編輯事項' : '新增事項';
+    $('itemId').value = item?.id || '';
+    $('itemTitleInput').value = item?.title || '';
+    $('itemStageInput').innerHTML = data.stages.map(s => `<option value="${s.id}" ${(item?.stageId || stageId) === s.id ? 'selected' : ''}>${escapeHTML(s.title)}</option>`).join('');
+    fillStatusSelect($('itemStatusInput'), item?.status || '待辦');
+    $('itemStartInput').value = item?.start || '';
+    $('itemEndInput').value = item?.end || '';
+    fillAudienceChecks($('audienceChecks'), item?.audiences || []);
+    $('itemOwnerInput').value = item?.owner || '';
+    $('itemPlaceInput').value = item?.place || '';
+    $('itemDescInput').value = item?.desc || '';
+    renderSubtaskEditors(item?.subtasks || []);
+    if (!item) addSubtaskEditor({audiences: []});
+    $('itemDialog').showModal();
+  }
+  $('addSubtaskBtn').onclick = () => addSubtaskEditor({audiences: getCheckedAudiences($('audienceChecks'))});
+  $('itemForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = $('itemId').value;
+    const subtasks = [...$('subtaskEditors').querySelectorAll('.subtask-editor')].map(div => ({
+      id: div.dataset.id || uid(), date: div.querySelector('.st-date').value,
+      text: div.querySelector('.st-text').value.trim(), audiences: getCheckedAudiences(div.querySelector('.st-audiences')),
+      owner: div.querySelector('.st-owner').value.trim(), status: div.querySelector('.st-status').value, note: div.querySelector('.st-note').value.trim()
+    })).filter(st => st.text || st.date || st.note);
+    const payload = {
+      id: id || uid(), stageId: $('itemStageInput').value, title: $('itemTitleInput').value.trim(), status: $('itemStatusInput').value,
+      start: $('itemStartInput').value, end: $('itemEndInput').value, audiences: getCheckedAudiences($('audienceChecks')),
+      owner: $('itemOwnerInput').value.trim(), place: $('itemPlaceInput').value.trim(), desc: $('itemDescInput').value.trim(), subtasks
+    };
+    if (!payload.title) return;
+    const idx = data.items.findIndex(i => i.id === id);
+    if (idx >= 0) data.items[idx] = payload;
+    else data.items.push(payload);
+    $('itemDialog').close();
+    renderAll();
+  });
+
+  function deleteStage(id) {
+    const targetStage = data.stages.find(s => String(s.id) === String(id));
+    if (!targetStage) {
+      showToast('找不到這個階段，請重新整理後再試一次。');
+      renderAll();
+      return;
+    }
+    const hasItems = data.items.some(i => String(i.stageId) === String(id));
+    const msg = hasItems
+      ? `確定要刪除「${targetStage.title || '此階段'}」嗎？此階段底下的事項也會一起刪除。`
+      : `確定要刪除「${targetStage.title || '此階段'}」嗎？`;
+    requestConfirm(msg, () => {
+      const before = data.stages.length;
+      data.stages = data.stages.filter(s => String(s.id) !== String(id));
+      data.items = data.items.filter(i => String(i.stageId) !== String(id));
+      saveData();
+      renderAll();
+      showToast(data.stages.length < before ? '已刪除階段。' : '刪除未完成，請重新整理後再試一次。');
+    }, {title: '刪除階段', okText: '確定刪除'});
+  }
+  function deleteItem(id) {
+    const target = data.items.find(i => String(i.id) === String(id));
+    if (!target) {
+      showToast('找不到這個事項，請重新整理後再試一次。');
+      renderAll();
+      return;
+    }
+    requestConfirm(`確定要刪除「${target.title || '此事項'}」嗎？`, () => {
+      const before = data.items.length;
+      data.items = data.items.filter(i => String(i.id) !== String(id));
+      saveData();
+      renderAll();
+      showToast(data.items.length < before ? '已刪除事項。' : '刪除未完成，請重新整理後再試一次。');
+    }, {title: '刪除事項', okText: '確定刪除'});
+  }
+
+  window.deleteItemSafe = deleteItem;
+  window.deleteStageSafe = deleteStage;
+
+  $('addStageTopBtn').onclick = () => openStageDialog(null, 'top');
+  $('addStageBottomBtn').onclick = () => openStageDialog(null, 'bottom');
+  $('addItemTopBtn').onclick = () => {
+    if (!data.stages.length) {
+      showToast('請先新增一個階段，再新增事項。');
+      return;
+    }
+    openItemDialog(null, data.stages[0]?.id);
+  };
+
+  $('settingsBtn').onclick = () => {
+    $('settingTitle').value = data.meta.title;
+    $('settingSubtitle').value = data.meta.subtitle;
+    $('settingNotice').value = data.meta.notice;
+    $('settingsDialog').showModal();
+  };
+  $('settingsForm').addEventListener('submit', e => {
+    e.preventDefault();
+    data.meta.title = $('settingTitle').value.trim() || '研究執行時間軸';
+    data.meta.subtitle = $('settingSubtitle').value.trim();
+    data.meta.notice = $('settingNotice').value.trim();
+    $('settingsDialog').close();
+    renderAll();
+  });
+
+  function setScreenshotMode(on) {
+    document.body.classList.toggle('screenshot-mode', on);
+    $('screenshotBtn').textContent = on ? '離開截圖模式' : '截圖模式';
+  }
+  $('screenshotBtn').onclick = () => setScreenshotMode(!document.body.classList.contains('screenshot-mode'));
+  $('exitScreenshotFloating').onclick = () => setScreenshotMode(false);
+
+  $('exportBtn').onclick = () => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const today = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `research-timeline-backup-${today}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+  $('importBtn').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+      if (!imported.meta || !Array.isArray(imported.stages) || !Array.isArray(imported.items)) throw new Error('格式不符');
+      requestConfirm('匯入後會覆蓋目前畫面中的資料，確定要匯入嗎？', () => {
+        data = imported;
+        saveData();
+        renderAll();
+        showToast('已匯入資料。');
+      }, {title: '匯入 JSON', okText: '確定匯入'});
+    } catch (err) {
+      showToast('匯入失敗：請確認 JSON 檔案格式是否正確。');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
