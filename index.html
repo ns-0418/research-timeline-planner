@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>研究執行時間軸 v4</title>
+  <title>研究執行時間軸 v5</title>
   <style>
+    @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap");
+
     :root {
       --bg: #f5f1ea;
       --paper: #fffdf8;
@@ -26,10 +28,17 @@
       --brown: #9a6b42;
       --shadow: 0 10px 25px rgba(43, 34, 23, .07);
       --radius: 18px;
-      font-family: ui-serif, "Noto Serif TC", "Source Han Serif TC", "PMingLiU", Georgia, serif;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", "Heiti TC", Arial, sans-serif;
     }
 
     * { box-sizing: border-box; }
+    html {
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", "Heiti TC", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
     body {
       margin: 0;
       color: var(--ink);
@@ -48,6 +57,7 @@
       border-radius: 12px;
       padding: 8px 12px;
       cursor: pointer;
+      font-weight: 500;
       transition: transform .08s ease, background .12s ease, border .12s ease;
     }
     button:hover { background: #fff; border-color: #cabaa8; }
@@ -82,7 +92,7 @@
       z-index: 10;
       box-shadow: 0 2px 0 rgba(255,255,255,.08) inset;
     }
-    .title h1 { margin: 0; font-size: 24px; letter-spacing: .03em; }
+    .title h1 { margin: 0; font-size: 24px; letter-spacing: .02em; font-weight: 800; }
     .title p { margin: 4px 0 0; color: #e8e0d4; font-size: 14px; }
     .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
@@ -171,7 +181,7 @@
     .stage.color-yellow { border-top: 5px solid var(--yellow); }
     .stage.color-lavender { border-top: 5px solid var(--lavender); }
     .stage.color-brown { border-top: 5px solid var(--brown); }
-    .stage h2 { margin: 0; font-size: 19px; letter-spacing: .02em; }
+    .stage h2 { margin: 0; font-size: 19px; letter-spacing: .01em; font-weight: 800; }
     .stage-meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
     .stage-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
 
@@ -180,6 +190,7 @@
       border-radius: 999px;
       padding: 3px 9px;
       font-size: 13px;
+      font-weight: 500;
       white-space: nowrap;
       background: #fff;
     }
@@ -211,7 +222,7 @@
       gap: 10px;
       align-items: start;
     }
-    .item-title { font-size: 17px; font-weight: 700; margin: 0; }
+    .item-title { font-size: 17px; font-weight: 800; margin: 0; letter-spacing: .005em; }
     .item-meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
     .item-desc { margin: 8px 0 0; color: #4f493f; font-size: 14px; }
     .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
@@ -248,7 +259,7 @@
     }
     .subtask:last-child { border-bottom: 0; }
     .sub-date { font-variant-numeric: tabular-nums; }
-    .sub-text strong { font-weight: 700; }
+    .sub-text strong { font-weight: 700; letter-spacing: .005em; }
     .sub-note { color: var(--muted); font-size: 13px; margin-top: 2px; }
     .empty { color: var(--muted); text-align: center; padding: 22px; }
 
