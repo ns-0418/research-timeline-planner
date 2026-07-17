@@ -3,1175 +3,279 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>研究執行時間軸 v6</title>
+  <title>研究執行時間軸 v7</title>
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap");
-
     :root {
-      --bg: #f5f1ea;
-      --paper: #fffdf8;
-      --paper-2: #fbf8f1;
-      --ink: #28231b;
-      --muted: #736b61;
-      --line: #dfd5c8;
-      --deep: #3b3021;
-      --deep-2: #4c412f;
-      --accent: #7a6ee6;
-      --green: #269c7e;
-      --orange: #d7673f;
-      --blue: #2c6ea7;
-      --red: #bb4b4b;
-      --pink: #c45a87;
-      --teal: #1f8d91;
-      --yellow: #d6a326;
-      --lavender: #8b6fd6;
-      --brown: #9a6b42;
-      --shadow: 0 10px 25px rgba(43, 34, 23, .07);
-      --radius: 18px;
-      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", "Heiti TC", Arial, sans-serif;
+      --bg:#f5f1ea; --paper:#fffdf8; --paper-2:#fbf8f1; --ink:#28231b; --muted:#736b61;
+      --line:#dfd5c8; --deep:#3b3021; --deep-2:#4c412f; --shadow:0 10px 25px rgba(43,34,23,.07);
+      --radius:18px; --accent:#7a6ee6; --green:#269c7e; --orange:#d7673f; --blue:#2c6ea7;
+      --red:#bb4b4b; --pink:#c45a87; --teal:#1f8d91; --yellow:#d6a326; --lavender:#8b6fd6; --brown:#9a6b42; --gray:#9c958d;
+      font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",Arial,sans-serif;
     }
-
-    * { box-sizing: border-box; }
-    html {
-      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", "Heiti TC", Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-      text-rendering: optimizeLegibility;
-    }
-
-    body {
-      margin: 0;
-      color: var(--ink);
-      background: var(--bg);
-      line-height: 1.6;
-    }
-
-    button, input, select, textarea {
-      font: inherit;
-    }
-
-    button {
-      border: 1px solid var(--line);
-      background: var(--paper);
-      color: var(--ink);
-      border-radius: 12px;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-weight: 500;
-      transition: transform .08s ease, background .12s ease, border .12s ease;
-    }
-    button:hover { background: #fff; border-color: #cabaa8; }
-    button:active { transform: translateY(1px); }
-    button.primary { background: var(--deep); color: white; border-color: var(--deep); }
-    button.primary:hover { background: var(--deep-2); }
-    button.ghost { background: transparent; }
-    button.danger { color: var(--red); border-color: #e2b5b5; }
-    button.small { padding: 4px 8px; border-radius: 10px; font-size: 13px; }
-    .screenshot-exit {
-      display: none;
-      position: fixed;
-      right: 22px;
-      bottom: 22px;
-      z-index: 999;
-      box-shadow: 0 12px 28px rgba(36, 29, 20, .20);
-      background: var(--deep);
-      color: white;
-      border-color: var(--deep);
-    }
-
-    header {
-      background: var(--deep);
-      color: #fff;
-      padding: 22px 32px 20px;
-      display: flex;
-      justify-content: space-between;
-      gap: 24px;
-      align-items: flex-start;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      box-shadow: 0 2px 0 rgba(255,255,255,.08) inset;
-    }
-    .title h1 { margin: 0; font-size: 24px; letter-spacing: .02em; font-weight: 800; }
-    .title p { margin: 4px 0 0; color: #e8e0d4; font-size: 14px; }
-    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-
-    .bar {
-      background: var(--paper-2);
-      border-bottom: 1px solid var(--line);
-      padding: 12px 32px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .filters span.label { color: var(--muted); font-size: 14px; margin-right: 2px; }
-    .filter-chip {
-      border: 1px solid var(--line);
-      background: #fffbf4;
-      color: var(--deep);
-      border-radius: 999px;
-      padding: 7px 14px;
-      font-size: 14px;
-      user-select: none;
-    }
-    .filter-chip.active { background: var(--deep); color: #fff; border-color: var(--deep); }
-    .summary { color: var(--muted); font-size: 14px; text-align: right; max-width: 560px; }
-
-    main {
-      width: min(1120px, calc(100% - 36px));
-      margin: 26px auto 60px;
-    }
-
-    .notice {
-      margin: 0 auto 20px;
-      background: rgba(255,255,255,.55);
-      border: 1px dashed #cdbfaf;
-      border-radius: 16px;
-      padding: 14px 18px;
-      color: var(--muted);
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .stage {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      margin: 0 0 20px;
-      overflow: hidden;
-    }
-    .stage-header {
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--line);
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 12px;
-      align-items: start;
-    }
-    .stage-title {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-    .drag-handle { color: #b4a89b; font-size: 18px; }
-    .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
-    .dot.purple { background: var(--accent); }
-    .dot.green { background: var(--green); }
-    .dot.orange { background: var(--orange); }
-    .dot.blue { background: var(--blue); }
-    .dot.red { background: var(--red); }
-    .dot.pink { background: var(--pink); }
-    .dot.teal { background: var(--teal); }
-    .dot.yellow { background: var(--yellow); }
-    .dot.lavender { background: var(--lavender); }
-    .dot.brown { background: var(--brown); }
-    .stage.color-purple { border-top: 5px solid var(--accent); }
-    .stage.color-green { border-top: 5px solid var(--green); }
-    .stage.color-orange { border-top: 5px solid var(--orange); }
-    .stage.color-blue { border-top: 5px solid var(--blue); }
-    .stage.color-red { border-top: 5px solid var(--red); }
-    .stage.color-pink { border-top: 5px solid var(--pink); }
-    .stage.color-teal { border-top: 5px solid var(--teal); }
-    .stage.color-yellow { border-top: 5px solid var(--yellow); }
-    .stage.color-lavender { border-top: 5px solid var(--lavender); }
-    .stage.color-brown { border-top: 5px solid var(--brown); }
-    .stage h2 { margin: 0; font-size: 19px; letter-spacing: .01em; font-weight: 800; }
-    .stage-meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
-    .stage-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
-
-    .pill {
-      border: 1px solid currentColor;
-      border-radius: 999px;
-      padding: 3px 9px;
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-      background: #fff;
-    }
-    .status-待確認, .status-待辦 { color: #b27612; background: #fff8e5; }
-    .status-進行中 { color: #2f77a5; background: #edf7ff; }
-    .status-完成 { color: #178a68; background: #ecfbf5; }
-    .status-延期 { color: #bd5038; background: #fff1ec; }
-    .status-等待IRB { color: #6d61d8; background: #f0efff; }
-    .status-無 { color: #756d63; background: #f8f5ef; }
-
-    .items { padding: 14px 18px 18px; }
-    .item {
-      border: 1px solid #eadfd2;
-      background: linear-gradient(90deg, rgba(255,255,255,.97), rgba(255,253,248,.98));
-      border-radius: 15px;
-      padding: 14px 16px;
-      margin: 12px 0;
-      border-left: 7px solid #c8b8a7;
-    }
-    .item.aud-幼兒園 { border-left-color: var(--teal); }
-    .item.aud-家長研究對象 { border-left-color: var(--pink); }
-    .item.aud-教學老師 { border-left-color: var(--yellow); }
-    .item.aud-研究團隊 { border-left-color: var(--accent); }
-    .item.aud-IRB文件 { border-left-color: var(--orange); }
-    .item.aud-資料分析 { border-left-color: var(--blue); }
-    .item-top {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: start;
-    }
-    .item-title { font-size: 17px; font-weight: 800; margin: 0; letter-spacing: .005em; }
-    .item-meta { color: var(--muted); font-size: 13px; margin-top: 2px; }
-    .item-desc { margin: 8px 0 0; color: #4f493f; font-size: 14px; }
-    .tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
-    .tag { border: 1px solid #ded2c5; border-radius: 999px; padding: 2px 8px; font-size: 12px; color: #5d554a; background: #fbf6ec; }
-    .tag.aud-幼兒園 { color: #176c70; background: #eaf8f7; border-color: #b9dddd; }
-    .tag.aud-家長研究對象 { color: #a23e68; background: #fff0f6; border-color: #e7b8cc; }
-    .tag.aud-教學老師 { color: #99711b; background: #fff8df; border-color: #e5cd80; }
-    .tag.aud-研究團隊 { color: #6357c5; background: #f1efff; border-color: #c7c1f0; }
-    .tag.aud-IRB文件 { color: #bd5038; background: #fff1ec; border-color: #e4b2a5; }
-    .tag.aud-資料分析 { color: #2b6696; background: #eef7ff; border-color: #b8d4ea; }
-    .date-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 88px;
-      border-radius: 999px;
-      padding: 3px 9px;
-      border: 1px solid #d8c8b8;
-      background: #fff8e9;
-      color: #7b5930;
-      font-size: 12px;
-      font-variant-numeric: tabular-nums;
-      font-weight: 700;
-    }
-    .subtasks { margin: 12px 0 0; border-top: 1px dashed #dfd1c2; padding-top: 10px; }
-    .subtask {
-      display: grid;
-      grid-template-columns: 115px 1fr auto;
-      gap: 10px;
-      align-items: start;
-      padding: 8px 0;
-      border-bottom: 1px solid #f0e7dc;
-      font-size: 14px;
-    }
-    .subtask:last-child { border-bottom: 0; }
-    .sub-date { font-variant-numeric: tabular-nums; }
-    .sub-text strong { font-weight: 700; letter-spacing: .005em; }
-    .sub-note { color: var(--muted); font-size: 13px; margin-top: 2px; }
-    .empty { color: var(--muted); text-align: center; padding: 22px; }
-
-    .fab-row { display: flex; justify-content: center; margin: 20px 0; }
-    .add-stage-btn { border-style: dashed; padding: 13px 28px; color: var(--muted); }
-
-    dialog {
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 0;
-      width: min(760px, calc(100% - 26px));
-      box-shadow: 0 24px 70px rgba(38, 31, 22, .28);
-      background: var(--paper);
-    }
-    dialog::backdrop { background: rgba(30, 24, 18, .35); backdrop-filter: blur(2px); }
-    .modal-head { padding: 18px 22px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
-    .modal-head h3 { margin: 0; font-size: 20px; }
-    .modal-body { padding: 18px 22px 22px; max-height: min(78vh, 820px); overflow: auto; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .form-row { margin-bottom: 14px; }
-    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
-    input[type="text"], input[type="date"], select, textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      background: #fffefa;
-      border-radius: 12px;
-      padding: 9px 10px;
-      color: var(--ink);
-    }
-    textarea { min-height: 78px; resize: vertical; }
-    .checks { display: flex; gap: 8px; flex-wrap: wrap; }
-    .check {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 5px 9px;
-      background: #fffefa;
-      font-size: 13px;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .subtask-editor {
-      background: #fbf7ef;
-      border: 1px solid #eadfd2;
-      border-radius: 14px;
-      padding: 12px;
-      margin: 10px 0;
-    }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-    #confirmDialog { width: min(460px, calc(100% - 30px)); }
-    #confirmMessage { margin: 0; color: #4f493f; line-height: 1.8; }
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: 24px;
-      transform: translateX(-50%);
-      background: var(--deep);
-      color: white;
-      border-radius: 999px;
-      padding: 10px 16px;
-      box-shadow: 0 14px 32px rgba(36, 29, 20, .24);
-      z-index: 1200;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .18s ease, bottom .18s ease;
-      font-size: 14px;
-    }
-    .toast.show { opacity: 1; bottom: 34px; }
-
-
-    .view-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .view-toggle { border-radius: 999px; padding: 7px 14px; background: #fffbf4; font-size: 14px; }
-    .view-toggle.active { background: var(--deep); color: #fff; border-color: var(--deep); }
-    .date-badge.date-截止日期 { background: #fff1ec; color: #a54231; border-color: #e4b2a5; }
-    .date-badge.date-提醒日期 { background: #eef7ff; color: #2b6696; border-color: #b8d4ea; }
-    .date-badge.date-會議時間 { background: #f1efff; color: #6357c5; border-color: #c7c1f0; }
-    .date-badge.date-資料回收 { background: #ecfbf5; color: #178a68; border-color: #bde1d4; }
-    .date-kind {
-      font-size: 11px;
-      font-weight: 800;
-      margin-right: 6px;
-      padding-right: 6px;
-      border-right: 1px solid rgba(90,70,48,.25);
-      letter-spacing: .02em;
-    }
-    .rich-text { margin-top: 8px; color: #4f493f; font-size: 14px; line-height: 1.75; }
-    .rich-text p { margin: 0 0 5px; }
-    .rich-text ul, .rich-text ol { margin: 4px 0 6px 1.3em; padding: 0; }
-    .rich-text li { margin: 2px 0; }
-    .checkline { display: flex; gap: 8px; align-items: flex-start; margin: 3px 0; }
-    .fake-check {
-      width: 17px; height: 17px; border-radius: 5px;
-      border: 1px solid #cdbfaf; background: #fffefa;
-      display: inline-flex; align-items: center; justify-content: center;
-      flex: 0 0 auto; margin-top: 3px; font-size: 12px; color: var(--green);
-    }
-    .fake-check.checked { background: #ecfbf5; border-color: #8bc9b5; }
-    .item-desc { margin: 8px 0 0; color: #4f493f; font-size: 14px; }
-    .date-board { display: none; }
-    .date-view .date-board { display: block; }
-    .date-view #timeline, .date-view .add-stage-btn { display: none; }
-    .date-panel {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-    .date-panel-head {
-      padding: 18px 20px;
-      border-bottom: 1px solid var(--line);
-      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center;
-    }
-    .date-panel-head h2 { margin: 0; font-size: 19px; font-weight: 800; }
-    .date-list { padding: 8px 18px 18px; }
-    .date-row {
-      display: grid;
-      grid-template-columns: 150px 1fr auto;
-      gap: 12px;
-      align-items: start;
-      padding: 13px 0;
-      border-bottom: 1px solid #eee4d8;
-    }
-    .date-row:last-child { border-bottom: 0; }
-    .date-row-title { font-weight: 800; margin-bottom: 2px; }
-    .date-row-meta { color: var(--muted); font-size: 13px; }
-    .date-row .rich-text { margin-top: 5px; }
-    .editor-help { color: var(--muted); font-size: 12px; margin-top: 4px; }
-
-    .screenshot-mode .edit-only { display: none !important; }
-    .screenshot-mode .screenshot-exit { display: block !important; }
-    .screenshot-mode header { position: static; }
-    .screenshot-mode .bar { position: static; }
-    .screenshot-mode main { width: min(1050px, calc(100% - 24px)); margin-top: 20px; }
-    .screenshot-mode .stage { box-shadow: none; page-break-inside: avoid; }
-    .screenshot-mode .item { page-break-inside: avoid; }
-
-    @media (max-width: 760px) {
-      header { padding: 18px 18px; display: block; }
-      .top-actions { justify-content: flex-start; margin-top: 12px; }
-      .bar { padding: 12px 18px; }
-      .summary { text-align: left; }
-      .stage-header, .item-top { grid-template-columns: 1fr; }
-      .stage-actions { justify-content: flex-start; }
-      .subtask { grid-template-columns: 1fr; gap: 2px; }
-      .date-row { grid-template-columns: 1fr; gap: 5px; }
-      .view-controls { justify-content: flex-start; }
-      .form-grid { grid-template-columns: 1fr; }
-    }
-
-    @media print {
-      .edit-only { display: none !important; }
-      header, .bar { position: static; }
-      body { background: #fff; }
-      main { width: 100%; margin: 0; }
-      .stage { box-shadow: none; }
-    }
+    *{box-sizing:border-box} html{font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",Arial,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    body{margin:0;color:var(--ink);background:var(--bg);line-height:1.6} button,input,select,textarea{font:inherit}
+    button{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:12px;padding:8px 12px;cursor:pointer;font-weight:600;transition:background .12s ease,border .12s ease,transform .08s ease}
+    button:hover{background:#fff;border-color:#cabaa8} button:active{transform:translateY(1px)} button.primary{background:var(--deep);color:#fff;border-color:var(--deep)} button.primary:hover{background:var(--deep-2)} button.ghost{background:transparent} button.danger{color:var(--red);border-color:#e2b5b5} button.small{padding:4px 8px;border-radius:10px;font-size:13px} button.muted{color:var(--muted)}
+    header{background:var(--deep);color:#fff;padding:22px 32px 20px;display:flex;justify-content:space-between;gap:24px;align-items:flex-start;position:sticky;top:0;z-index:10;box-shadow:0 2px 0 rgba(255,255,255,.08) inset}
+    .title h1{margin:0;font-size:24px;letter-spacing:.02em;font-weight:800}.title p{margin:4px 0 0;color:#e8e0d4;font-size:14px}.top-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    .bar{background:var(--paper-2);border-bottom:1px solid var(--line);padding:12px 32px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}.filters,.view-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.filters span.label{color:var(--muted);font-size:14px;margin-right:2px}.summary{color:var(--muted);font-size:14px;text-align:right;max-width:560px}.filter-chip,.view-toggle{border:1px solid var(--line);background:#fffbf4;color:var(--deep);border-radius:999px;padding:7px 14px;font-size:14px;user-select:none}.filter-chip.active,.view-toggle.active{background:var(--deep);color:#fff;border-color:var(--deep)}
+    main{width:min(1120px,calc(100% - 36px));margin:26px auto 60px}.notice{margin:0 auto 20px;background:rgba(255,255,255,.55);border:1px dashed #cdbfaf;border-radius:16px;padding:14px 18px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;align-items:center}
+    .fab-row{display:flex;justify-content:center;margin:20px 0}.add-stage-btn{border-style:dashed;padding:13px 28px;color:var(--muted)}
+    .stage{background:var(--paper);border:1px solid var(--line);border-top-width:5px;border-radius:var(--radius);box-shadow:var(--shadow);margin:0 0 20px;overflow:hidden}.stage.hidden{filter:grayscale(.9);opacity:.64;background:#f4f2ee}.stage.hidden .items{background:#f7f6f3}.stage-header{padding:18px 20px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}.stage-title{display:flex;gap:12px;align-items:flex-start}.drag-handle{color:#b4a89b;font-size:18px}.dot{width:11px;height:11px;border-radius:50%;display:inline-block;flex:0 0 auto;margin-top:8px}.dot.purple{background:var(--accent)}.dot.green{background:var(--green)}.dot.orange{background:var(--orange)}.dot.blue{background:var(--blue)}.dot.red{background:var(--red)}.dot.pink{background:var(--pink)}.dot.teal{background:var(--teal)}.dot.yellow{background:var(--yellow)}.dot.lavender{background:var(--lavender)}.dot.brown{background:var(--brown)}.dot.gray{background:var(--gray)}
+    .color-purple{border-top-color:var(--accent)!important}.color-green{border-top-color:var(--green)!important}.color-orange{border-top-color:var(--orange)!important}.color-blue{border-top-color:var(--blue)!important}.color-red{border-top-color:var(--red)!important}.color-pink{border-top-color:var(--pink)!important}.color-teal{border-top-color:var(--teal)!important}.color-yellow{border-top-color:var(--yellow)!important}.color-lavender{border-top-color:var(--lavender)!important}.color-brown{border-top-color:var(--brown)!important}.color-gray{border-top-color:var(--gray)!important}
+    .stage h2{margin:0;font-size:19px;letter-spacing:.01em;font-weight:800}.stage-meta{color:var(--muted);font-size:14px;margin-top:2px}.stage-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}.items{padding:14px 18px 18px}
+    .pill{border:1px solid currentColor;border-radius:999px;padding:3px 9px;font-size:13px;font-weight:600;white-space:nowrap;background:#fff}.status-待確認,.status-待辦{color:#b27612;background:#fff8e5}.status-進行中{color:#2f77a5;background:#edf7ff}.status-完成{color:#178a68;background:#ecfbf5}.status-延期{color:#bd5038;background:#fff1ec}.status-等待IRB{color:#6d61d8;background:#f0efff}.status-無{color:#756d63;background:#f8f5ef}.status-隱藏{color:#6e6a64;background:#f2f0ec}
+    .item{border:1px solid #eadfd2;background:linear-gradient(90deg,rgba(255,255,255,.97),rgba(255,253,248,.98));border-radius:15px;padding:14px 16px;margin:12px 0;border-left:7px solid #c8b8a7}.item.hidden{filter:grayscale(.9);opacity:.55;background:#f5f4f0}.item.color-purple{border-left-color:var(--accent)}.item.color-green{border-left-color:var(--green)}.item.color-orange{border-left-color:var(--orange)}.item.color-blue{border-left-color:var(--blue)}.item.color-red{border-left-color:var(--red)}.item.color-pink{border-left-color:var(--pink)}.item.color-teal{border-left-color:var(--teal)}.item.color-yellow{border-left-color:var(--yellow)}.item.color-lavender{border-left-color:var(--lavender)}.item.color-brown{border-left-color:var(--brown)}.item.color-gray{border-left-color:var(--gray)}.item-top{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}.item-title{font-size:17px;font-weight:800;margin:0;letter-spacing:.005em}.item-meta{color:var(--muted);font-size:13px;margin-top:2px}.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}.tag{border:1px solid #ded2c5;border-radius:999px;padding:2px 8px;font-size:12px;color:#5d554a;background:#fbf6ec}.tag.aud-幼兒園{color:#176c70;background:#eaf8f7;border-color:#b9dddd}.tag.aud-家長研究對象{color:#a23e68;background:#fff0f6;border-color:#e7b8cc}.tag.aud-教學老師{color:#99711b;background:#fff8df;border-color:#e5cd80}.tag.aud-研究團隊{color:#6357c5;background:#f1efff;border-color:#c7c1f0}.tag.aud-IRB文件{color:#bd5038;background:#fff1ec;border-color:#e4b2a5}.tag.aud-資料分析{color:#2b6696;background:#eef7ff;border-color:#b8d4ea}
+    .date-badge{display:inline-flex;align-items:center;justify-content:center;min-width:88px;border-radius:999px;padding:3px 9px;border:1px solid #d8c8b8;background:#fff8e9;color:#7b5930;font-size:12px;font-variant-numeric:tabular-nums;font-weight:700}.date-badge.date-截止日期{background:#fff1ec;color:#a54231;border-color:#e4b2a5}.date-badge.date-提醒日期{background:#eef7ff;color:#2b6696;border-color:#b8d4ea}.date-badge.date-會議時間{background:#f1efff;color:#6357c5;border-color:#c7c1f0}.date-badge.date-資料回收{background:#ecfbf5;color:#178a68;border-color:#bde1d4}.date-kind{font-size:11px;font-weight:800;margin-right:6px;padding-right:6px;border-right:1px solid rgba(90,70,48,.25);letter-spacing:.02em}
+    .subtasks{margin:12px 0 0;border-top:1px dashed #dfd1c2;padding-top:10px}.subtask{display:grid;grid-template-columns:145px 1fr auto;gap:10px;align-items:start;padding:8px 0;border-bottom:1px solid #f0e7dc;font-size:14px}.subtask:last-child{border-bottom:0}.sub-date{font-variant-numeric:tabular-nums}.sub-note{color:var(--muted);font-size:13px;margin-top:2px}.empty{color:var(--muted);text-align:center;padding:22px}
+    .rich-text{margin-top:8px;color:#4f493f;font-size:14px;line-height:1.75;white-space:normal}.rich-text p{margin:0 0 5px}.rich-text ul,.rich-text ol{margin:4px 0 6px 1.3em;padding:0}.rich-text li{margin:2px 0}.checkline{display:flex;gap:8px;align-items:flex-start;margin:3px 0}.fake-check{width:17px;height:17px;border-radius:5px;border:1px solid #cdbfaf;background:#fffefa;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-top:3px;font-size:12px;color:var(--green)}.fake-check.checked{background:#ecfbf5;border-color:#8bc9b5}
+    .date-board{display:none}.date-view .date-board{display:block}.date-view #timeline,.date-view #hiddenStageArea,.date-view .add-stage-btn{display:none}.date-panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}.date-panel-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}.date-panel-head h2{margin:0;font-size:19px;font-weight:800}.date-list{padding:8px 18px 18px}.date-row{display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:start;padding:13px 0;border-bottom:1px solid #eee4d8}.date-row:last-child{border-bottom:0}.date-row-title{font-weight:800;margin-bottom:2px}.date-row-meta{color:var(--muted);font-size:13px}.date-row .rich-text{margin-top:5px}
+    dialog{border:1px solid var(--line);border-radius:18px;padding:0;width:min(820px,calc(100% - 26px));box-shadow:0 24px 70px rgba(38,31,22,.28);background:var(--paper)}dialog::backdrop{background:rgba(30,24,18,.35);backdrop-filter:blur(2px)}.modal-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.modal-head h3{margin:0;font-size:20px}.modal-body{padding:18px 22px 22px;max-height:min(78vh,820px);overflow:auto}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.form-row{margin-bottom:14px}label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}input[type="text"],input[type="date"],select,textarea{width:100%;border:1px solid var(--line);background:#fffefa;border-radius:12px;padding:9px 10px;color:var(--ink)}textarea{min-height:88px;resize:vertical}.checks{display:flex;gap:8px;flex-wrap:wrap}.check{border:1px solid var(--line);border-radius:999px;padding:5px 9px;background:#fffefa;font-size:13px;display:inline-flex;align-items:center;gap:5px}.subtask-editor{background:#fbf7ef;border:1px solid #eadfd2;border-radius:14px;padding:12px;margin:10px 0}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.editor-help{color:var(--muted);font-size:12px;margin-top:4px}.hide{display:none!important}#confirmDialog{width:min(460px,calc(100% - 30px))}#confirmMessage{margin:0;color:#4f493f;line-height:1.8}.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--deep);color:white;border-radius:999px;padding:10px 16px;box-shadow:0 14px 32px rgba(36,29,20,.24);z-index:1200;opacity:0;pointer-events:none;transition:opacity .18s ease,bottom .18s ease;font-size:14px}.toast.show{opacity:1;bottom:34px}.screenshot-exit{display:none;position:fixed;right:22px;bottom:22px;z-index:999;box-shadow:0 12px 28px rgba(36,29,20,.20);background:var(--deep);color:white;border-color:var(--deep)}
+    .screenshot-mode .edit-only{display:none!important}.screenshot-mode .screenshot-exit{display:block!important}.screenshot-mode header{position:static}.screenshot-mode main{width:min(1050px,calc(100% - 24px));margin-top:20px}.screenshot-mode .stage,.screenshot-mode .item{box-shadow:none;page-break-inside:avoid}
+    @media(max-width:760px){header{padding:18px;display:block}.top-actions{justify-content:flex-start;margin-top:12px}.bar{padding:12px 18px}.summary{text-align:left}.stage-header,.item-top,.date-row{grid-template-columns:1fr}.stage-actions{justify-content:flex-start}.subtask{grid-template-columns:1fr;gap:2px}.form-grid{grid-template-columns:1fr}}
+    @media print{.edit-only{display:none!important}header,.bar{position:static}body{background:#fff}main{width:100%;margin:0}.stage{box-shadow:none}}
   </style>
 </head>
 <body>
   <header>
-    <div class="title">
-      <h1 id="siteTitle">研究執行時間軸</h1>
-      <p id="siteSubtitle">執行時間2026/7/1－2027/2/28</p>
-    </div>
+    <div class="title"><h1 id="siteTitle">研究執行時間軸</h1><p id="siteSubtitle">執行期間2026/7/1－2027/2/28</p></div>
     <div class="top-actions edit-only">
-      <button id="settingsBtn">設定</button>
-      <button id="exportBtn">匯出 JSON</button>
-      <button id="importBtn">匯入 JSON</button>
-      <button id="screenshotBtn" class="primary">截圖模式</button>
-      <input id="fileInput" type="file" accept="application/json" hidden />
+      <button id="settingsBtn" type="button">設定</button><button id="exportBtn" type="button">匯出 JSON</button><button id="importBtn" type="button">匯入 JSON</button><button id="screenshotBtn" type="button">截圖模式</button><button id="addItemTopBtn" class="primary" type="button">＋新增事項</button>
+      <input id="importFile" type="file" accept="application/json" class="hide" />
     </div>
   </header>
-  <button id="exitScreenshotFloating" class="screenshot-exit">離開截圖模式</button>
-
   <section class="bar">
-    <div class="filters" id="filters"></div>
+    <div class="filters" id="filters"><span class="label">對象</span></div>
     <div class="view-controls">
-      <button id="timelineViewBtn" class="view-toggle active" type="button">時間軸</button>
-      <button id="dateViewBtn" class="view-toggle" type="button">日期總表</button>
-      <div class="summary" id="summaryText">請選擇對象檢視相關安排；可多選，也可看全部。</div>
+      <button class="view-toggle active" id="timelineViewBtn" type="button">時間軸</button><button class="view-toggle" id="dateViewBtn" type="button">日期總表</button><button class="view-toggle edit-only" id="sortModeBtn" type="button">排序：日期優先</button>
     </div>
+    <div class="summary" id="summaryText"></div>
   </section>
-
   <main>
-    <div class="notice">
-      <div id="noticeText">目前狀態：IRB 核准後進行園所協調與正式收案。</div>
-      <button class="small edit-only" id="addItemTopBtn">＋新增事項</button>
-    </div>
-
-    <div class="fab-row edit-only">
-      <button class="add-stage-btn" id="addStageTopBtn">＋ 在最上方新增階段</button>
-    </div>
-
+    <div class="notice"><span id="noticeText">目前狀態：IRB 核准後進行園所協調與正式收案。</span><button class="small ghost edit-only" id="editNoticeBtn" type="button">修改說明</button></div>
+    <div class="fab-row edit-only"><button class="add-stage-btn" id="addStageTopBtn" type="button">＋ 在最上方新增階段</button></div>
     <section id="timeline"></section>
-    <section id="dateBoard" class="date-board"></section>
-
-    <div class="fab-row edit-only">
-      <button class="add-stage-btn" id="addStageBottomBtn">＋ 在最下方新增階段</button>
-    </div>
+    <div class="fab-row edit-only"><button class="add-stage-btn" id="addStageBottomBtn" type="button">＋ 新增階段</button></div>
+    <section id="hiddenStageArea"></section>
+    <section class="date-board" id="dateBoard"></section>
   </main>
+  <button class="screenshot-exit" id="screenshotExitBtn" type="button">離開截圖模式</button>
 
-  <dialog id="stageDialog">
-    <form method="dialog" id="stageForm">
-      <div class="modal-head">
-        <h3 id="stageDialogTitle">新增階段</h3>
-        <button value="cancel" class="small ghost">關閉</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="stageId" />
-        <div class="form-row"><label>階段名稱</label><input id="stageTitleInput" type="text" placeholder="例如：研究說明與家長同意書" required /></div>
-        <div class="form-grid">
-          <div class="form-row"><label>開始日期</label><input id="stageStartInput" type="date" /></div>
-          <div class="form-row"><label>結束日期</label><input id="stageEndInput" type="date" /></div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row"><label>狀態</label><select id="stageStatusInput"></select></div>
-          <div class="form-row"><label>色點</label><select id="stageColorInput"><option value="purple">紫</option><option value="green">綠</option><option value="orange">橘</option><option value="blue">藍</option><option value="red">紅</option><option value="pink">粉</option><option value="teal">青綠</option><option value="yellow">黃</option><option value="lavender">薰衣草</option><option value="brown">棕</option></select></div>
-        </div>
-        <div class="form-row"><label>階段說明</label><textarea id="stageDescInput" placeholder="可簡短說明此階段目標"></textarea></div>
-        <div class="modal-actions"><button value="cancel">取消</button><button class="primary" id="saveStageBtn" value="default">儲存階段</button></div>
-      </div>
-    </form>
-  </dialog>
+  <dialog id="settingsDialog"><form method="dialog" id="settingsForm"><div class="modal-head"><h3>網站設定</h3><button value="cancel" class="small ghost" type="button" data-close-dialog="settingsDialog">關閉</button></div><div class="modal-body"><div class="form-row"><label>標題</label><input id="settingTitle" type="text" /></div><div class="form-row"><label>副標</label><input id="settingSubtitle" type="text" /></div><div class="form-row"><label>上方說明</label><textarea id="settingNotice"></textarea></div><div class="modal-actions"><button type="button" data-close-dialog="settingsDialog">取消</button><button class="primary" type="submit">儲存</button></div></div></form></dialog>
 
-  <dialog id="itemDialog">
-    <form method="dialog" id="itemForm">
-      <div class="modal-head">
-        <h3 id="itemDialogTitle">新增事項</h3>
-        <button value="cancel" class="small ghost">關閉</button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="itemId" />
-        <div class="form-row"><label>主事項名稱</label><input id="itemTitleInput" type="text" placeholder="例如：家長同意書發放與回收" required /></div>
-        <div class="form-grid">
-          <div class="form-row"><label>所屬階段</label><select id="itemStageInput"></select></div>
-          <div class="form-row"><label>狀態</label><select id="itemStatusInput"></select></div>
-        </div>
-        <div class="form-grid">
-          <div class="form-row"><label>日期類型</label><select id="itemDateTypeInput"></select></div>
-          <div class="form-row"><label>開始日期</label><input id="itemStartInput" type="date" /></div>
-          <div class="form-row"><label>結束／截止日期</label><input id="itemEndInput" type="date" /></div>
-        </div>
-        <div class="form-row"><label>對象，可複選</label><div class="checks" id="audienceChecks"></div></div>
-        <div class="form-grid">
-          <div class="form-row"><label>負責人</label><input id="itemOwnerInput" type="text" placeholder="例如：玢潔、園長、班級老師" /></div>
-          <div class="form-row"><label>地點／班級</label><input id="itemPlaceInput" type="text" placeholder="例如：合作幼兒園、大班教室" /></div>
-        </div>
-        <div class="form-row"><label>詳細說明／備註</label><textarea id="itemDescInput" placeholder="可換行，也可輸入：
-- 項目
-1. 編號項目
-[ ] 待勾選事項
-[x] 已完成事項"></textarea><div class="editor-help">支援換行、項目符號、編號，以及 [ ] / [x] 勾選清單。</div></div>
-        <div class="form-row">
-          <label>子任務／時間節點</label>
-          <div id="subtaskEditors"></div>
-          <button type="button" id="addSubtaskBtn" class="small">＋新增子任務</button>
-        </div>
-        <div class="modal-actions"><button value="cancel">取消</button><button class="primary" id="saveItemBtn" value="default">儲存事項</button></div>
-      </div>
-    </form>
-  </dialog>
+  <dialog id="stageDialog"><form id="stageForm"><div class="modal-head"><h3 id="stageDialogTitle">新增階段</h3><button class="small ghost" type="button" data-close-dialog="stageDialog">關閉</button></div><div class="modal-body"><input id="stageId" type="hidden" /><div class="form-row"><label>階段名稱</label><input id="stageTitleInput" type="text" placeholder="例如：階段二｜共通準備與文件確認" /></div><div class="form-grid"><div class="form-row"><label>開始日期</label><input id="stageStartInput" type="date" /></div><div class="form-row"><label>結束／截止日期</label><input id="stageEndInput" type="date" /></div><div class="form-row"><label>狀態</label><select id="stageStatusInput"></select></div><div class="form-row"><label>階段顏色</label><select id="stageColorInput"></select></div></div><div class="form-row"><label>階段說明</label><textarea id="stageDescInput" placeholder="可以換行、使用項目符號或編號。"></textarea><div class="editor-help">儲存後會保留換行，也支援 - 項目、1. 編號、[ ] 勾選格式。</div></div><div class="modal-actions"><button type="button" data-close-dialog="stageDialog">取消</button><button class="primary" id="saveStageBtn" type="submit">儲存階段</button></div></div></form></dialog>
 
-  <dialog id="settingsDialog">
-    <form method="dialog" id="settingsForm">
-      <div class="modal-head">
-        <h3>網站設定</h3>
-        <button value="cancel" class="small ghost">關閉</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row"><label>標題</label><input id="settingTitle" type="text" /></div>
-        <div class="form-row"><label>副標</label><input id="settingSubtitle" type="text" /></div>
-        <div class="form-row"><label>目前狀態文字</label><textarea id="settingNotice"></textarea></div>
-        <div class="modal-actions"><button value="cancel">取消</button><button class="primary" value="default" id="saveSettingsBtn">儲存設定</button></div>
-      </div>
-    </form>
-  </dialog>
+  <dialog id="itemDialog"><form id="itemForm"><div class="modal-head"><h3 id="itemDialogTitle">新增事項</h3><button class="small ghost" type="button" data-close-dialog="itemDialog">關閉</button></div><div class="modal-body"><input id="itemId" type="hidden" /><div class="form-row"><label>事項名稱</label><input id="itemTitleInput" type="text" placeholder="例如：家長同意書發放與回收" /></div><div class="form-grid"><div class="form-row"><label>所屬階段</label><select id="itemStageInput"></select></div><div class="form-row"><label>狀態</label><select id="itemStatusInput"></select></div><div class="form-row"><label>日期類型</label><select id="itemDateTypeInput"></select></div><div class="form-row"><label>事項顏色</label><select id="itemColorInput"></select></div><div class="form-row"><label>開始／執行日期</label><input id="itemStartInput" type="date" /></div><div class="form-row"><label>結束／截止日期</label><input id="itemEndInput" type="date" /></div></div><div class="form-row"><label>對象，可複選</label><div class="checks" id="audienceChecks"></div></div><div class="form-grid"><div class="form-row"><label>負責人</label><input id="itemOwnerInput" type="text" /></div><div class="form-row"><label>地點／備註標籤</label><input id="itemPlaceInput" type="text" /></div></div><div class="form-row"><label>任務內容／備註</label><textarea id="itemDescInput" placeholder="可以換行，例如：&#10;- 先寄送文件&#10;- 再約園長會議&#10;[ ] 確認日期&#10;[x] 完成草稿"></textarea><div class="editor-help">儲存後會保留換行，也支援 - 項目、1. 編號、[ ] / [x] 勾選格式。</div></div><div class="form-row"><label>子事件／子任務</label><div id="subtaskEditors"></div><button type="button" class="small" id="addSubtaskBtn">＋ 新增子事件</button></div><div class="modal-actions"><button type="button" data-close-dialog="itemDialog">取消</button><button class="primary" type="submit">儲存事項</button></div></div></form></dialog>
 
-  <dialog id="confirmDialog">
-    <form method="dialog" id="confirmForm">
-      <div class="modal-head">
-        <h3 id="confirmTitle">確認操作</h3>
-        <button value="cancel" class="small ghost" id="confirmCloseBtn" type="button">關閉</button>
-      </div>
-      <div class="modal-body">
-        <p id="confirmMessage">確定要執行這個操作嗎？</p>
-        <div class="modal-actions">
-          <button value="cancel" id="confirmCancelBtn" type="button">取消</button>
-          <button class="primary danger" id="confirmOkBtn" type="button">確定刪除</button>
-        </div>
-      </div>
-    </form>
-  </dialog>
-
+  <dialog id="confirmDialog"><form method="dialog" id="confirmForm"><div class="modal-head"><h3 id="confirmTitle">確認操作</h3><button value="cancel" class="small ghost" id="confirmCloseBtn" type="button">關閉</button></div><div class="modal-body"><p id="confirmMessage">確定要執行這個操作嗎？</p><div class="modal-actions"><button value="cancel" id="confirmCancelBtn" type="button">取消</button><button class="primary danger" id="confirmOkBtn" type="button">確定</button></div></div></form></dialog>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-
 <script>
 (() => {
   const STORAGE_KEY = 'fuurinResearchTimelinePlanner.v1';
-  const audiences = ['幼兒園', '家長／研究對象', '教學老師', '研究團隊', 'IRB／文件', '資料分析'];
-  const statuses = ['待確認', '待辦', '進行中', '完成', '延期', '等待IRB', '無'];
-  const dateTypes = ['執行期間', '執行日期', '截止日期', '提醒日期', '會議時間', '資料回收'];
-
-  const sampleData = {
-    meta: {
-      title: '研究執行時間軸',
-      subtitle: '執行時間2026/7/1－2027/2/28',
-      notice: '目前狀態：IRB 核准後進行園所協調與正式收案。'
-    },
-    stages: [
-      {
-        id: uid(), title: '階段一｜IRB 核准與園所確認', start: '2026-07-01', end: '2026-07-31', status: '待確認', color: 'purple', desc: '完成倫理審查文件確認，並與合作幼兒園確認正式執行安排。'
-      },
-      {
-        id: uid(), title: '階段二｜研究說明與家長同意書', start: '2026-08-01', end: '2026-08-15', status: '待辦', color: 'green', desc: '完成家長說明、同意書發放與回收，整理可納入研究名單。'
-      },
-      {
-        id: uid(), title: '階段三｜前測與正式課程介入', start: '2026-08-16', end: '2026-10-15', status: '待辦', color: 'orange', desc: '安排前測、課程進行、課後紀錄與後測。'
-      },
-      {
-        id: uid(), title: '階段四｜資料整理與論文撰寫', start: '2026-10-16', end: '2027-02-28', status: '待辦', color: 'blue', desc: '完成資料輸入、統計分析、結果撰寫與口試準備。'
-      }
-    ],
-    items: []
-  };
-  sampleData.items = [
-    {
-      id: uid(), stageId: sampleData.stages[0].id, title: '寄送園所合作公文與 IRB 核准資料',
-      start: '2026-07-10', end: '2026-07-15', status: '待確認', audiences: ['幼兒園', '研究團隊', 'IRB／文件'],
-      owner: '玢潔', place: '合作幼兒園', desc: '將學校公文、新光醫院 IRB 核准證明與研究相關文件提供園所留存。',
-      subtasks: [
-        {id: uid(), date: '2026-07-10', text: '確認 IRB 核准文件、案號與可檢附資料', audiences: ['研究團隊', 'IRB／文件'], owner: '玢潔', status: '待確認', note: '若尚未核准，文字需改為待核准後始執行。'},
-        {id: uid(), date: '2026-07-12', text: '完成學校公文內容與附件整理', audiences: ['研究團隊'], owner: '玢潔', status: '待辦', note: ''},
-        {id: uid(), date: '2026-07-15', text: '寄送公文與附件給幼兒園', audiences: ['幼兒園', '研究團隊'], owner: '玢潔', status: '待辦', note: '寄送後可再用 LINE 簡短告知園長。'}
-      ]
-    },
-    {
-      id: uid(), stageId: sampleData.stages[1].id, title: '家長同意書發放與回收',
-      start: '2026-08-01', end: '2026-08-15', status: '待辦', audiences: ['幼兒園', '家長／研究對象', '教學老師', '研究團隊'],
-      owner: '玢潔、班級老師', place: '合作幼兒園', desc: '由研究團隊提供同意書，園方協助發放與回收，研究團隊整理同意名單。',
-      subtasks: [
-        {id: uid(), date: '2026-07-28', text: '玢潔提供同意書紙本與電子檔給幼兒園', audiences: ['幼兒園', '研究團隊'], owner: '玢潔', status: '待辦', note: '確認份數、班級與是否需要回收袋。'},
-        {id: uid(), date: '2026-08-01', text: '幼兒園協助發放給家長', audiences: ['幼兒園', '家長／研究對象', '教學老師'], owner: '班級老師', status: '待辦', note: '可放入書包或由老師發給家長。'},
-        {id: uid(), date: '2026-08-08', text: '提醒尚未繳回之家長', audiences: ['幼兒園', '家長／研究對象', '教學老師'], owner: '班級老師', status: '待辦', note: '提醒文字可由研究團隊提供。'},
-        {id: uid(), date: '2026-08-12', text: '玢潔至園所回收同意書', audiences: ['幼兒園', '研究團隊'], owner: '玢潔', status: '待辦', note: '同步確認同意與不同意名單。'},
-        {id: uid(), date: '2026-08-15', text: '整理收案名單與未回收名單', audiences: ['研究團隊'], owner: '玢潔', status: '待辦', note: ''}
-      ]
-    },
-    {
-      id: uid(), stageId: sampleData.stages[2].id, title: '前測施作與課程時段確認',
-      start: '2026-08-16', end: '2026-08-31', status: '待辦', audiences: ['幼兒園', '教學老師', '研究團隊', '家長／研究對象'],
-      owner: '玢潔、教學老師', place: '大班教室', desc: '確認前測日期、班級動線、施測方式與課程上課時段。',
-      subtasks: [
-        {id: uid(), date: '2026-08-16', text: '與園長確認可施測日期與上課教室', audiences: ['幼兒園', '研究團隊'], owner: '玢潔、園長', status: '待辦', note: ''},
-        {id: uid(), date: '2026-08-19', text: '進行幼兒前測', audiences: ['家長／研究對象', '教學老師', '研究團隊'], owner: '玢潔、教學老師', status: '待辦', note: '避免影響園所作息，時間需再與老師確認。'},
-        {id: uid(), date: '2026-08-22', text: '整理前測資料與缺漏名單', audiences: ['研究團隊', '資料分析'], owner: '玢潔', status: '待辦', note: ''}
-      ]
-    }
+  const DEFAULT_SUBTITLE = '執行期間2026/7/1－2027/2/28';
+  const audiences = ['幼兒園','家長／研究對象','教學老師','研究團隊','IRB／文件','資料分析'];
+  const statuses = ['待確認','待辦','進行中','完成','延期','等待IRB','無'];
+  const dateTypes = ['執行期間','執行日期','截止日期','提醒日期','會議時間','資料回收'];
+  const colors = [
+    ['purple','紫色'],['green','綠色'],['orange','橘色'],['blue','藍色'],['red','紅色'],['pink','粉色'],['teal','青綠'],['yellow','黃色'],['lavender','薰衣草'],['brown','棕色'],['gray','灰色']
   ];
-
+  const uid = () => 'id_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+  const $ = id => document.getElementById(id);
   let data = loadData();
   let selectedAudiences = new Set(['全部']);
   let currentView = 'timeline';
+  let pendingConfirm = null;
 
-  const $ = (id) => document.getElementById(id);
-  const timeline = $('timeline');
-  let pendingConfirmAction = null;
-  let toastTimer = null;
+  function sampleData(){
+    const s1 = uid(), s2 = uid();
+    return { meta:{title:'研究執行時間軸', subtitle:DEFAULT_SUBTITLE, notice:'目前狀態：IRB 核准後進行園所協調與正式收案。', sortMode:'date'}, stages:[
+      {id:s1,title:'階段一｜IRB 核准與園所確認',start:'2026-07-01',end:'2026-07-31',status:'待確認',color:'purple',desc:'完成倫理審查文件確認，並與合作幼兒園確認正式執行安排。',order:1,hidden:false},
+      {id:s2,title:'階段二｜園所合作與上課前協調',start:'2026-07-15',end:'2026-08-31',status:'待辦',color:'green',desc:'完成公文交換、幼兒園會議、教學老師聯絡與課程前置作業。',order:2,hidden:false}
+    ], items:[
+      {id:uid(),stageId:s1,title:'確認 IRB 核准文件、案號與可檢附資料',status:'待確認',dateType:'截止日期',start:'2026-07-10',end:'2026-07-10',audiences:['研究團隊','IRB／文件'],owner:'玢潔',place:'文件確認',desc:'[ ] 確認核准證明\n[ ] 確認可提供幼兒園之附件\n[ ] 整理公文使用資料',subtasks:[],order:1,color:'purple',hidden:false},
+      {id:uid(),stageId:s2,title:'A園｜9月課程前置作業與日程確認',status:'待辦',dateType:'執行期間',start:'2026-08-01',end:'2026-08-31',audiences:['幼兒園','教學老師','研究團隊'],owner:'玢潔、園方、教學老師',place:'A園',desc:'預計9月開始執行，8月底前完成家長同意書、前測、課程與後測時間安排。',subtasks:[{id:uid(),dateType:'執行期間',start:'2026-08-01',end:'2026-08-10',text:'與A園確認研究說明與協助事項',audiences:['幼兒園','研究團隊'],owner:'玢潔、園方',status:'待確認',note:''}],order:1,color:'green',hidden:false}
+    ] };
+  }
+  function loadData(){
+    try{ const raw = localStorage.getItem(STORAGE_KEY); return normalizeData(raw ? JSON.parse(raw) : sampleData()); }
+    catch(e){ console.warn(e); return normalizeData(sampleData()); }
+  }
+  function normalizeData(d){
+    if(!d || typeof d !== 'object') d = sampleData();
+    d.meta = d.meta || {}; d.meta.title = d.meta.title || '研究執行時間軸';
+    if(!d.meta.subtitle || d.meta.subtitle.includes('目標：2027') || d.meta.subtitle.includes('2026－2027')) d.meta.subtitle = DEFAULT_SUBTITLE;
+    d.meta.notice = d.meta.notice || '目前狀態：IRB 核准後進行園所協調與正式收案。';
+    d.meta.sortMode = d.meta.sortMode || 'date';
+    d.stages = Array.isArray(d.stages) ? d.stages : [];
+    d.items = Array.isArray(d.items) ? d.items : [];
+    d.stages.forEach((s,i)=>{ s.id=s.id||uid(); s.title=s.title||'(未命名階段)'; s.order=Number.isFinite(+s.order)?+s.order:i+1; s.color=s.color||'purple'; s.hidden=!!s.hidden; s.status=s.status||'待辦'; });
+    d.items.forEach((it,i)=>{ it.id=it.id||uid(); it.order=Number.isFinite(+it.order)?+it.order:i+1; it.color=it.color||''; it.hidden=!!it.hidden; it.audiences=Array.isArray(it.audiences)?it.audiences:[]; it.subtasks=Array.isArray(it.subtasks)?it.subtasks:[]; it.status=it.status||'待辦'; it.dateType=it.dateType||((it.start&&it.end&&it.start!==it.end)?'執行期間':'執行日期'); it.subtasks.forEach((st,si)=>{ st.id=st.id||uid(); st.audiences=Array.isArray(st.audiences)?st.audiences:[]; st.status=st.status||'待辦'; st.dateType=st.dateType||'執行日期'; if(st.dateType==='執行期間'){ st.start=st.start||st.date||''; st.end=st.end||st.date||st.start||''; } else { st.date=st.date||st.start||''; } st.order=Number.isFinite(+st.order)?+st.order:si+1; }); });
+    saveData(d); return d;
+  }
+  function saveData(obj=data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); }
 
-  function showToast(message) {
-    const toast = $('toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
-  }
-
-  function requestConfirm(message, onConfirm, options={}) {
-    const dialog = $('confirmDialog');
-    $('confirmTitle').textContent = options.title || '確認操作';
-    $('confirmMessage').textContent = message;
-    $('confirmOkBtn').textContent = options.okText || '確定刪除';
-    pendingConfirmAction = typeof onConfirm === 'function' ? onConfirm : null;
-    if (dialog.open) dialog.close();
-    dialog.showModal();
-  }
-
-  function closeConfirmDialog() {
-    pendingConfirmAction = null;
-    if ($('confirmDialog')?.open) $('confirmDialog').close();
-  }
-
-  $('confirmCancelBtn').addEventListener('click', closeConfirmDialog);
-  $('confirmCloseBtn').addEventListener('click', closeConfirmDialog);
-  $('confirmOkBtn').addEventListener('click', () => {
-    const action = pendingConfirmAction;
-    pendingConfirmAction = null;
-    if ($('confirmDialog')?.open) $('confirmDialog').close();
-    if (action) action();
-  });
-
-  document.querySelectorAll('dialog button[value="cancel"]').forEach(btn => {
-    btn.type = 'button';
-    btn.addEventListener('click', () => btn.closest('dialog')?.close());
-  });
-
-  // 強化刪除按鈕：用 pointerdown 與 click 雙重監聽，避免部分預覽環境吃掉 click 或瀏覽器原生 confirm 被擋。
-  let lastDeleteEvent = {key: '', time: 0};
-  function handleDeleteIntent(e) {
-    const deleteItemBtn = e.target.closest?.('[data-delete-item]');
-    const deleteStageBtn = e.target.closest?.('[data-delete-stage]');
-    if (!deleteItemBtn && !deleteStageBtn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const key = deleteItemBtn ? `item:${deleteItemBtn.dataset.deleteItem}` : `stage:${deleteStageBtn.dataset.deleteStage}`;
-    const now = Date.now();
-    if (lastDeleteEvent.key === key && now - lastDeleteEvent.time < 650) return;
-    lastDeleteEvent = {key, time: now};
-    if (deleteItemBtn) deleteItem(deleteItemBtn.dataset.deleteItem);
-    else deleteStage(deleteStageBtn.dataset.deleteStage);
-  }
-  document.addEventListener('pointerdown', handleDeleteIntent, true);
-  document.addEventListener('click', handleDeleteIntent, true);
-
-  timeline.addEventListener('click', (e) => {
-    const btn = e.target.closest('button');
-    if (!btn || !timeline.contains(btn)) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (btn.dataset.addItem) return openItemDialog(null, btn.dataset.addItem);
-    if (btn.dataset.editStage) return openStageDialog(data.stages.find(s => s.id === btn.dataset.editStage));
-    if (btn.dataset.deleteStage) return deleteStage(btn.dataset.deleteStage);
-    if (btn.dataset.editItem) return openItemDialog(data.items.find(i => i.id === btn.dataset.editItem));
-    if (btn.dataset.deleteItem) return deleteItem(btn.dataset.deleteItem);
-  });
-
-  function uid() { return 'id_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
-  function loadData() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return structuredClone(sampleData);
-      const parsed = JSON.parse(raw);
-      if (!parsed.meta || !Array.isArray(parsed.stages) || !Array.isArray(parsed.items)) throw new Error('bad data');
-      return parsed;
-    } catch (e) {
-      console.warn('讀取舊資料時發生問題，已載入範例資料。');
-      return structuredClone(sampleData);
-    }
-  }
-  function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-  function fmtDate(d) {
-    if (!d) return '';
-    const [y,m,day] = d.split('-');
-    return `${y}/${Number(m)}/${Number(day)}`;
-  }
-  function fmtRange(start, end) {
-    if (start && end && start !== end) return `${fmtDate(start)}－${fmtDate(end)}`;
-    return fmtDate(start || end) || '未設定日期';
-  }
-  function escapeHTML(str='') {
-    return String(str).replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));
-  }
-  function dateTypeLabel(type) {
-    return type || '執行期間';
-  }
-  function dateBadge(type, start, end) {
-    const label = dateTypeLabel(type || ((start && end && start !== end) ? '執行期間' : '執行日期'));
-    const text = fmtRange(start, end);
-    return `<span class="date-badge date-${escapeHTML(label)}"><span class="date-kind">${escapeHTML(label)}</span>${escapeHTML(text)}</span>`;
-  }
-  function renderRichText(text='') {
-    const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
-    let html = '';
-    let mode = null;
-    const close = () => { if (mode) { html += mode === 'ul' ? '</ul>' : '</ol>'; mode = null; } };
-    for (const raw of lines) {
+  function escapeHTML(str=''){ return String(str).replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch])); }
+  function statusClass(s='無'){ return 'status-' + String(s||'無').replace(/\s/g,''); }
+  function audClass(a){ return String(a).replace(/[／\/\s]/g,''); }
+  function fmtDate(d){ if(!d) return '未設定日期'; const [y,m,day]=String(d).split('-'); return y&&m&&day ? `${y}/${Number(m)}/${Number(day)}` : d; }
+  function fmtRange(a,b){ if(a&&b&&a!==b) return `${fmtDate(a)}－${fmtDate(b)}`; return fmtDate(a||b); }
+  function sortDateOf(o){ return o.start || o.date || o.end || '9999-12-31'; }
+  function colorOf(c){ return colors.some(x=>x[0]===c) ? c : 'purple'; }
+  function stageById(id){ return data.stages.find(s=>String(s.id)===String(id)); }
+  function selectedAll(){ return selectedAudiences.has('全部'); }
+  function intersects(list=[]){ return selectedAll() || (list||[]).some(a=>selectedAudiences.has(a)); }
+  function audienceTags(list=[]){ return (list||[]).map(a=>`<span class="tag aud-${audClass(a)}">${escapeHTML(a)}</span>`).join(''); }
+  function dateTypeLabel(type){ return type || '執行日期'; }
+  function dateBadge(type,start,end){ const label=dateTypeLabel(type); return `<span class="date-badge date-${escapeHTML(label)}"><span class="date-kind">${escapeHTML(label)}</span>${escapeHTML(fmtRange(start,end))}</span>`; }
+  function renderRichText(text=''){
+    const lines = String(text||'').replace(/\r\n/g,'\n').split('\n');
+    let html='', list=null;
+    const closeList=()=>{ if(list){ html += list==='ol' ? '</ol>' : '</ul>'; list=null; } };
+    for(const raw of lines){
       const line = raw.trimEnd();
-      const trimmed = line.trim();
-      if (!trimmed) { close(); html += '<p></p>'; continue; }
-      let m;
-      if ((m = trimmed.match(/^\[( |x|X)\]\s*(.*)$/))) {
-        close();
-        const checked = m[1].toLowerCase() === 'x';
-        html += `<div class="checkline"><span class="fake-check ${checked ? 'checked' : ''}">${checked ? '✓' : ''}</span><span>${escapeHTML(m[2])}</span></div>`;
-      } else if ((m = trimmed.match(/^[-•]\s+(.*)$/))) {
-        if (mode !== 'ul') { close(); html += '<ul>'; mode = 'ul'; }
-        html += `<li>${escapeHTML(m[1])}</li>`;
-      } else if ((m = trimmed.match(/^\d+[.)]\s+(.*)$/))) {
-        if (mode !== 'ol') { close(); html += '<ol>'; mode = 'ol'; }
-        html += `<li>${escapeHTML(m[1])}</li>`;
-      } else {
-        close(); html += `<p>${escapeHTML(trimmed)}</p>`;
-      }
+      if(!line.trim()){ closeList(); html += '<p>&nbsp;</p>'; continue; }
+      let m=line.match(/^\s*\[( |x|X)\]\s*(.*)$/);
+      if(m){ closeList(); html += `<div class="checkline"><span class="fake-check ${m[1].toLowerCase()==='x'?'checked':''}">${m[1].toLowerCase()==='x'?'✓':''}</span><span>${escapeHTML(m[2])}</span></div>`; continue; }
+      m=line.match(/^\s*[-•]\s+(.*)$/);
+      if(m){ if(list!=='ul'){ closeList(); html+='<ul>'; list='ul'; } html += `<li>${escapeHTML(m[1])}</li>`; continue; }
+      m=line.match(/^\s*\d+[\.、]\s+(.*)$/);
+      if(m){ if(list!=='ol'){ closeList(); html+='<ol>'; list='ol'; } html += `<li>${escapeHTML(m[1])}</li>`; continue; }
+      closeList(); html += `<p>${escapeHTML(line)}</p>`;
     }
-    close();
-    return html;
+    closeList(); return html;
   }
-  function statusClass(status) { return 'status-' + (status || '無').replace(/\s+/g, ''); }
-  function audienceClass(a='') { return 'aud-' + String(a).replace(/[／\/\s]/g, ''); }
-  function mainAudienceClass(arr=[]) { return arr.length ? audienceClass(arr[0]) : ''; }
-  function audienceTags(arr=[]) { return arr.map(a => `<span class="tag ${audienceClass(a)}">${escapeHTML(a)}</span>`).join(''); }
-  function intersects(arr=[]) {
-    if (selectedAudiences.has('全部')) return true;
-    return arr.some(a => selectedAudiences.has(a));
-  }
+  function showToast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>t.classList.remove('show'),2200); }
+  function requestConfirm(message,onOk,opt={}){ pendingConfirm=onOk; $('confirmTitle').textContent=opt.title||'確認操作'; $('confirmMessage').textContent=message; $('confirmOkBtn').textContent=opt.okText||'確定'; $('confirmDialog').showModal(); }
 
-  function renderAll() {
-    $('siteTitle').textContent = data.meta.title;
-    $('siteSubtitle').textContent = data.meta.subtitle;
-    $('noticeText').textContent = data.meta.notice;
-    document.body.classList.toggle('date-view', currentView === 'date');
-    renderFilters();
-    renderViewControls();
-    renderTimeline();
-    renderDateBoard();
-    saveData();
-  }
-
-  function renderFilters() {
-    const filterBox = $('filters');
-    filterBox.innerHTML = '<span class="label">檢視：</span>';
-    ['全部', ...audiences].forEach(name => {
-      const btn = document.createElement('button');
-      btn.className = 'filter-chip' + (selectedAudiences.has(name) ? ' active' : '');
-      btn.textContent = name;
-      btn.onclick = () => {
-        if (name === '全部') {
-          selectedAudiences = new Set(['全部']);
-        } else {
-          selectedAudiences.delete('全部');
-          if (selectedAudiences.has(name)) selectedAudiences.delete(name);
-          else selectedAudiences.add(name);
-          if (!selectedAudiences.size) selectedAudiences.add('全部');
-        }
-        renderAll();
-      };
-      filterBox.appendChild(btn);
+  function sortedStages(includeHidden=false){
+    const arr=[...data.stages].filter(s=>includeHidden || !s.hidden);
+    return arr.sort((a,b)=>{
+      if(!!a.hidden!==!!b.hidden) return a.hidden?1:-1;
+      if(data.meta.sortMode==='manual') return (a.order||0)-(b.order||0) || sortDateOf(a).localeCompare(sortDateOf(b));
+      return sortDateOf(a).localeCompare(sortDateOf(b)) || (a.order||0)-(b.order||0) || (a.title||'').localeCompare(b.title||'');
     });
-    const active = selectedAudiences.has('全部') ? '全部對象' : [...selectedAudiences].join('、');
-    $('summaryText').textContent = `目前顯示：${active}。可用截圖模式隱藏編輯按鈕。`;
   }
-  function renderViewControls() {
-    $('timelineViewBtn')?.classList.toggle('active', currentView === 'timeline');
-    $('dateViewBtn')?.classList.toggle('active', currentView === 'date');
-  }
-
-  $('timelineViewBtn')?.addEventListener('click', () => { currentView = 'timeline'; renderAll(); });
-  $('dateViewBtn')?.addEventListener('click', () => { currentView = 'date'; renderAll(); });
-
-
-  function renderTimeline() {
-    timeline.innerHTML = '';
-    const sortedStages = data.stages;
-    let visibleCount = 0;
-
-    sortedStages.forEach(stage => {
-      const stageItems = data.items.filter(item => item.stageId === stage.id && intersects(item.audiences));
-      const visibleSubOnly = data.items.filter(item => item.stageId === stage.id && !intersects(item.audiences) && item.subtasks?.some(st => intersects(st.audiences)));
-      const allVisible = [...stageItems, ...visibleSubOnly];
-      if (!selectedAudiences.has('全部') && allVisible.length === 0) return;
-      visibleCount++;
-      const stageEl = document.createElement('article');
-      stageEl.className = 'stage color-' + (stage.color || 'purple');
-      stageEl.innerHTML = `
-        <div class="stage-header">
-          <div>
-            <div class="stage-title">
-              <span class="drag-handle edit-only">⠿</span>
-              <span class="dot ${escapeHTML(stage.color || 'purple')}"></span>
-              <div>
-                <h2>${escapeHTML(stage.title)}</h2>
-                <div class="stage-meta">${fmtRange(stage.start, stage.end)}${stage.desc ? '｜' + escapeHTML(stage.desc) : ''}</div>
-              </div>
-            </div>
-          </div>
-          <div class="stage-actions">
-            <span class="pill ${statusClass(stage.status)}">${escapeHTML(stage.status || '無')}</span>
-            <button type="button" class="small edit-only" data-add-item="${stage.id}">＋事項</button>
-            <button type="button" class="small edit-only" data-edit-stage="${stage.id}">編輯</button>
-            <button type="button" class="small danger edit-only" data-delete-stage="${stage.id}" onclick="event.preventDefault(); event.stopPropagation(); window.deleteStageSafe && window.deleteStageSafe(this.dataset.deleteStage); return false;">刪除</button>
-          </div>
-        </div>
-        <div class="items"></div>
-      `;
-      const itemsBox = stageEl.querySelector('.items');
-      const itemsForRender = selectedAudiences.has('全部') ? data.items.filter(i => i.stageId === stage.id) : allVisible;
-      if (!itemsForRender.length) {
-        itemsBox.innerHTML = `<div class="empty">這個階段目前沒有事項。</div>`;
-      } else {
-        itemsForRender.forEach(item => itemsBox.appendChild(renderItem(item)));
-      }
-      timeline.appendChild(stageEl);
+  function sortedItemsForStage(stageId, includeHidden=true){
+    return data.items.filter(i=>String(i.stageId)===String(stageId) && (includeHidden || !i.hidden)).sort((a,b)=>{
+      if(!!a.hidden!==!!b.hidden) return a.hidden?1:-1;
+      if(data.meta.sortMode==='manual') return (a.order||0)-(b.order||0) || sortDateOf(a).localeCompare(sortDateOf(b));
+      return sortDateOf(a).localeCompare(sortDateOf(b)) || (a.order||0)-(b.order||0) || (a.title||'').localeCompare(b.title||'');
     });
-    if (!visibleCount) timeline.innerHTML = `<div class="empty">目前沒有符合篩選條件的事項。</div>`;
-
   }
+  function setSequentialOrders(){ sortedStages(true).forEach((s,i)=>s.order=i+1); data.stages.forEach(s=>sortedItemsForStage(s.id,true).forEach((it,i)=>it.order=i+1)); saveData(); }
+  function moveStage(id,dir){ const arr=sortedStages(true); const i=arr.findIndex(s=>String(s.id)===String(id)); const j=i+dir; if(i<0||j<0||j>=arr.length) return; data.meta.sortMode='manual'; [arr[i].order,arr[j].order]=[arr[j].order,arr[i].order]; saveData(); renderAll(); }
+  function moveItem(id,dir){ const item=data.items.find(i=>String(i.id)===String(id)); if(!item) return; const arr=sortedItemsForStage(item.stageId,true); const i=arr.findIndex(x=>String(x.id)===String(id)); const j=i+dir; if(i<0||j<0||j>=arr.length) return; data.meta.sortMode='manual'; [arr[i].order,arr[j].order]=[arr[j].order,arr[i].order]; saveData(); renderAll(); }
 
-  function renderItem(item) {
-    const filteredSubtasks = selectedAudiences.has('全部') ? (item.subtasks || []) : (item.subtasks || []).filter(st => intersects(st.audiences));
-    const showWhole = selectedAudiences.has('全部') || intersects(item.audiences);
-    const el = document.createElement('div');
-    el.className = 'item ' + mainAudienceClass(item.audiences || []);
-    el.innerHTML = `
-      <div class="item-top">
-        <div>
-          <p class="item-title">${escapeHTML(item.title)}</p>
-          <div class="item-meta">${dateBadge(item.dateType, item.start, item.end)}${item.owner ? '｜負責：' + escapeHTML(item.owner) : ''}${item.place ? '｜' + escapeHTML(item.place) : ''}</div>
-          ${item.desc && showWhole ? `<div class="rich-text">${renderRichText(item.desc)}</div>` : ''}
-          <div class="tags">${audienceTags(item.audiences || [])}</div>
-        </div>
-        <div class="stage-actions">
-          <span class="pill ${statusClass(item.status)}">${escapeHTML(item.status || '無')}</span>
-          <button type="button" class="small edit-only" data-edit-item="${item.id}">編輯</button>
-          <button type="button" class="small danger edit-only" data-delete-item="${item.id}" onclick="event.preventDefault(); event.stopPropagation(); window.deleteItemSafe && window.deleteItemSafe(this.dataset.deleteItem); return false;">刪除</button>
-        </div>
-      </div>
-      <div class="subtasks">
-        ${filteredSubtasks.length ? filteredSubtasks.map(st => `
-          <div class="subtask">
-            <div class="sub-date">${dateBadge(st.dateType || '執行日期', st.date, st.date)}</div>
-            <div class="sub-text">
-              <strong>${escapeHTML(st.text)}</strong>
-              ${st.note ? `<div class="rich-text">${renderRichText(st.note)}</div>` : ''}
-              <div class="sub-note">${st.owner ? '負責：' + escapeHTML(st.owner) : ''}</div>
-              <div class="tags">${audienceTags(st.audiences || [])}</div>
-            </div>
-            <span class="pill ${statusClass(st.status)}">${escapeHTML(st.status || '無')}</span>
-          </div>
-        `).join('') : '<div class="empty">尚未新增子任務。</div>'}
-      </div>
-    `;
+  function renderAll(){
+    saveData(); $('siteTitle').textContent=data.meta.title; $('siteSubtitle').textContent=data.meta.subtitle; $('noticeText').textContent=data.meta.notice;
+    document.body.classList.toggle('date-view', currentView==='date');
+    $('sortModeBtn').textContent = data.meta.sortMode === 'manual' ? '排序：手動優先' : '排序：日期優先';
+    renderFilters(); renderViewControls(); renderTimeline(); renderDateBoard();
+  }
+  function renderFilters(){
+    const box=$('filters'); box.innerHTML='<span class="label">對象</span>';
+    ['全部',...audiences].forEach(a=>{ const btn=document.createElement('button'); btn.type='button'; btn.className='filter-chip '+(selectedAudiences.has(a)?'active':''); btn.textContent=a; btn.onclick=()=>{ if(a==='全部'){ selectedAudiences=new Set(['全部']); } else { selectedAudiences.delete('全部'); selectedAudiences.has(a)?selectedAudiences.delete(a):selectedAudiences.add(a); if(!selectedAudiences.size) selectedAudiences.add('全部'); } renderAll(); }; box.appendChild(btn); });
+    const active=selectedAll()?'全部對象':[...selectedAudiences].join('、'); $('summaryText').textContent=`目前顯示：${active}。隱藏的事項不會出現在日期總表。`;
+  }
+  function renderViewControls(){ $('timelineViewBtn').classList.toggle('active',currentView==='timeline'); $('dateViewBtn').classList.toggle('active',currentView==='date'); }
+  function stageVisibleForFilter(stage){ if(selectedAll()) return true; if(stage.hidden) return true; const items=data.items.filter(i=>String(i.stageId)===String(stage.id)); return items.some(i=>intersects(i.audiences)||(i.subtasks||[]).some(st=>intersects(st.audiences))); }
+  function renderTimeline(){
+    const timeline=$('timeline'), hiddenArea=$('hiddenStageArea'); timeline.innerHTML=''; hiddenArea.innerHTML='';
+    const active=sortedStages(false).filter(stageVisibleForFilter), hidden=sortedStages(true).filter(s=>s.hidden).filter(stageVisibleForFilter);
+    if(!active.length) timeline.innerHTML='<div class="empty">目前沒有符合篩選條件的階段或事項。</div>';
+    active.forEach(stage=>timeline.appendChild(renderStage(stage)));
+    if(hidden.length){ hiddenArea.innerHTML='<div class="stage-meta" style="margin:10px 0 8px;">已隱藏階段</div>'; hidden.forEach(stage=>hiddenArea.appendChild(renderStage(stage))); }
+  }
+  function renderStage(stage){
+    const stageEl=document.createElement('article'); stageEl.className=`stage color-${colorOf(stage.color)} ${stage.hidden?'hidden':''}`;
+    stageEl.innerHTML=`<div class="stage-header"><div><div class="stage-title"><span class="drag-handle edit-only">⠿</span><span class="dot ${colorOf(stage.color)}"></span><div><h2>${escapeHTML(stage.title)}</h2><div class="stage-meta">${fmtRange(stage.start,stage.end)}${stage.hidden?'｜已隱藏':''}</div>${stage.desc?`<div class="rich-text">${renderRichText(stage.desc)}</div>`:''}</div></div></div><div class="stage-actions"><span class="pill ${stage.hidden?'status-隱藏':statusClass(stage.status)}">${stage.hidden?'已隱藏':escapeHTML(stage.status||'無')}</span><button type="button" class="small edit-only" data-move-stage-up="${stage.id}">↑</button><button type="button" class="small edit-only" data-move-stage-down="${stage.id}">↓</button><button type="button" class="small edit-only" data-toggle-stage="${stage.id}">${stage.hidden?'顯示':'隱藏'}</button><button type="button" class="small edit-only" data-add-item="${stage.id}">＋事項</button><button type="button" class="small edit-only" data-edit-stage="${stage.id}">編輯</button><button type="button" class="small danger edit-only" data-delete-stage="${stage.id}">刪除</button></div></div><div class="items"></div>`;
+    const itemsBox=stageEl.querySelector('.items');
+    let items=sortedItemsForStage(stage.id,true);
+    if(!selectedAll()) items=items.filter(item=>item.hidden || intersects(item.audiences)||(item.subtasks||[]).some(st=>intersects(st.audiences)));
+    if(!items.length) itemsBox.innerHTML='<div class="empty">這個階段目前沒有事項。</div>'; else items.forEach(item=>itemsBox.appendChild(renderItem(item,stage)));
+    return stageEl;
+  }
+  function renderItem(item,stage){
+    const filteredSubtasks=selectedAll()? (item.subtasks||[]) : (item.subtasks||[]).filter(st=>intersects(st.audiences));
+    const showWhole=selectedAll()||intersects(item.audiences)||item.hidden;
+    const itemColor=colorOf(item.color||stage?.color||'purple');
+    const el=document.createElement('div'); el.className=`item color-${itemColor} ${item.hidden?'hidden':''}`;
+    el.innerHTML=`<div class="item-top"><div><p class="item-title">${escapeHTML(item.title)}</p><div class="item-meta">${dateBadge(item.dateType,item.start,item.end)}${item.owner?'｜負責：'+escapeHTML(item.owner):''}${item.place?'｜'+escapeHTML(item.place):''}${item.hidden?'｜已隱藏':''}</div>${item.desc&&showWhole?`<div class="rich-text">${renderRichText(item.desc)}</div>`:''}<div class="tags">${audienceTags(item.audiences||[])}</div></div><div class="stage-actions"><span class="pill ${item.hidden?'status-隱藏':statusClass(item.status)}">${item.hidden?'已隱藏':escapeHTML(item.status||'無')}</span><button type="button" class="small edit-only" data-move-item-up="${item.id}">↑</button><button type="button" class="small edit-only" data-move-item-down="${item.id}">↓</button><button type="button" class="small edit-only" data-toggle-item="${item.id}">${item.hidden?'顯示':'隱藏'}</button><button type="button" class="small edit-only" data-edit-item="${item.id}">編輯</button><button type="button" class="small danger edit-only" data-delete-item="${item.id}">刪除</button></div></div><div class="subtasks">${filteredSubtasks.length?filteredSubtasks.map(st=>renderSubtask(st)).join(''):'<div class="empty">尚未新增子任務。</div>'}</div>`;
     return el;
   }
+  function subDates(st){ return st.dateType==='執行期間' ? [st.start||st.date, st.end||st.start||st.date] : [st.date||st.start, st.date||st.start]; }
+  function renderSubtask(st){ const [s,e]=subDates(st); return `<div class="subtask"><div class="sub-date">${dateBadge(st.dateType||'執行日期',s,e)}</div><div class="sub-text"><div class="rich-text">${renderRichText(st.text||'(未命名子事件)')}</div>${st.note?`<div class="rich-text">${renderRichText(st.note)}</div>`:''}<div class="sub-note">${st.owner?'負責：'+escapeHTML(st.owner):''}</div><div class="tags">${audienceTags(st.audiences||[])}</div></div><span class="pill ${statusClass(st.status)}">${escapeHTML(st.status||'無')}</span></div>`; }
 
-  function collectDateEntries() {
-    const entries = [];
-    data.items.forEach(item => {
-      const stage = data.stages.find(s => s.id === item.stageId);
-      const itemVisible = selectedAudiences.has('全部') || intersects(item.audiences || []);
-      if (itemVisible) {
-        entries.push({
-          kind: '主事項', date: item.start || item.end || '', end: item.end || item.start || '', dateType: item.dateType || ((item.start && item.end && item.start !== item.end) ? '執行期間' : '執行日期'),
-          title: item.title, detail: item.desc, stageTitle: stage?.title || '未分類階段', itemTitle: item.title,
-          owner: item.owner, status: item.status, audiences: item.audiences || []
-        });
-      }
-      (item.subtasks || []).forEach(st => {
-        if (!selectedAudiences.has('全部') && !intersects(st.audiences || [])) return;
-        entries.push({
-          kind: '子任務', date: st.date || '', end: st.date || '', dateType: st.dateType || '執行日期',
-          title: st.text || '(未命名子任務)', detail: st.note, stageTitle: stage?.title || '未分類階段', itemTitle: item.title,
-          owner: st.owner || item.owner, status: st.status, audiences: st.audiences || []
-        });
-      });
+  function collectDateEntries(){
+    const entries=[];
+    data.items.forEach(item=>{
+      const stage=stageById(item.stageId); if(!stage||stage.hidden||item.hidden) return; if(!selectedAll()&&!intersects(item.audiences)&&!(item.subtasks||[]).some(st=>intersects(st.audiences))) return;
+      if(selectedAll()||intersects(item.audiences)) entries.push({kind:'主事項',date:item.start||item.end||'',end:item.end||item.start||'',dateType:item.dateType||'執行日期',title:item.title,detail:item.desc,stageTitle:stage.title,itemTitle:item.title,owner:item.owner,status:item.status,audiences:item.audiences||[]});
+      (item.subtasks||[]).forEach(st=>{ if(!selectedAll()&&!intersects(st.audiences)) return; const [s,e]=subDates(st); entries.push({kind:'子任務',date:s||'',end:e||s||'',dateType:st.dateType||'執行日期',title:st.text||'(未命名子任務)',detail:st.note,stageTitle:stage.title,itemTitle:item.title,owner:st.owner||item.owner,status:st.status,audiences:st.audiences||[]}); });
     });
-    entries.sort((a,b) => {
-      const ad = a.date || '9999-12-31';
-      const bd = b.date || '9999-12-31';
-      if (ad !== bd) return ad.localeCompare(bd);
-      return (a.title || '').localeCompare(b.title || '');
-    });
-    return entries;
+    entries.sort((a,b)=>(a.date||'9999-12-31').localeCompare(b.date||'9999-12-31') || (a.end||'9999-12-31').localeCompare(b.end||'9999-12-31') || (a.title||'').localeCompare(b.title||'')); return entries;
+  }
+  function renderDateBoard(){
+    const entries=collectDateEntries(); const active=selectedAll()?'全部對象':[...selectedAudiences].join('、');
+    $('dateBoard').innerHTML=`<div class="date-panel"><div class="date-panel-head"><div><h2>依日期排列總表</h2><div class="stage-meta">目前顯示：${escapeHTML(active)}｜已隱藏的階段與事項不會出現在這裡。</div></div><span class="pill status-進行中">共 ${entries.length} 筆</span></div><div class="date-list">${entries.length?entries.map(en=>`<div class="date-row"><div>${dateBadge(en.dateType,en.date,en.end)}</div><div><div class="date-row-title">${escapeHTML(en.title)}</div><div class="date-row-meta">${escapeHTML(en.kind)}｜${escapeHTML(en.stageTitle)}｜所屬事項：${escapeHTML(en.itemTitle)}${en.owner?'｜負責：'+escapeHTML(en.owner):''}</div>${en.detail?`<div class="rich-text">${renderRichText(en.detail)}</div>`:''}<div class="tags">${audienceTags(en.audiences||[])}</div></div><span class="pill ${statusClass(en.status)}">${escapeHTML(en.status||'無')}</span></div>`).join(''):'<div class="empty">目前沒有可依日期顯示的事項。</div>'}</div></div>`;
   }
 
-  function renderDateBoard() {
-    const board = $('dateBoard');
-    if (!board) return;
-    const entries = collectDateEntries();
-    const active = selectedAudiences.has('全部') ? '全部對象' : [...selectedAudiences].join('、');
-    board.innerHTML = `
-      <div class="date-panel">
-        <div class="date-panel-head">
-          <div>
-            <h2>依日期排列總表</h2>
-            <div class="stage-meta">目前顯示：${escapeHTML(active)}｜依開始日期／截止日期排序，方便確認同一時間點要完成的事項。</div>
-          </div>
-          <span class="pill status-進行中">共 ${entries.length} 筆</span>
-        </div>
-        <div class="date-list">
-          ${entries.length ? entries.map(en => `
-            <div class="date-row">
-              <div>${dateBadge(en.dateType, en.date, en.end)}</div>
-              <div>
-                <div class="date-row-title">${escapeHTML(en.title)}</div>
-                <div class="date-row-meta">${escapeHTML(en.kind)}｜${escapeHTML(en.stageTitle)}｜所屬事項：${escapeHTML(en.itemTitle)}${en.owner ? '｜負責：' + escapeHTML(en.owner) : ''}</div>
-                ${en.detail ? `<div class="rich-text">${renderRichText(en.detail)}</div>` : ''}
-                <div class="tags">${audienceTags(en.audiences || [])}</div>
-              </div>
-              <span class="pill ${statusClass(en.status)}">${escapeHTML(en.status || '無')}</span>
-            </div>
-          `).join('') : '<div class="empty">目前沒有可依日期顯示的事項。</div>'}
-        </div>
-      </div>
-    `;
-  }
+  function fillStatusSelect(select,value='待辦'){ select.innerHTML=statuses.map(s=>`<option value="${s}" ${s===value?'selected':''}>${s}</option>`).join(''); }
+  function fillDateTypeSelect(select,value='執行期間'){ select.innerHTML=dateTypes.map(t=>`<option value="${t}" ${t===value?'selected':''}>${t}</option>`).join(''); }
+  function fillColorSelect(select,value='purple',includeInherit=false){ select.innerHTML=(includeInherit?['<option value="">沿用階段顏色</option>']:[]).concat(colors.map(([v,n])=>`<option value="${v}" ${v===value?'selected':''}>${n}</option>`)).join(''); }
+  function fillAudienceChecks(container,selected=[]){ container.innerHTML=audiences.map(a=>`<label class="check"><input type="checkbox" value="${a}" ${(selected||[]).includes(a)?'checked':''}>${a}</label>`).join(''); }
+  function getCheckedAudiences(container){ return [...container.querySelectorAll('input:checked')].map(i=>i.value); }
 
-  function fillStatusSelect(select, value='待辦') {
-    select.innerHTML = statuses.map(s => `<option value="${s}" ${s===value?'selected':''}>${s}</option>`).join('');
+  function openStageDialog(stage=null,position='bottom'){
+    $('stageDialogTitle').textContent=stage?'編輯階段':'新增階段'; $('stageId').value=stage?.id||''; $('stageTitleInput').value=stage?.title||''; $('stageStartInput').value=stage?.start||''; $('stageEndInput').value=stage?.end||''; fillStatusSelect($('stageStatusInput'),stage?.status||'待辦'); fillColorSelect($('stageColorInput'),stage?.color||'purple'); $('stageDescInput').value=stage?.desc||''; $('saveStageBtn').dataset.position=position; $('stageDialog').showModal();
   }
-  function fillDateTypeSelect(select, value='執行期間') {
-    select.innerHTML = dateTypes.map(t => `<option value="${t}" ${t===value?'selected':''}>${t}</option>`).join('');
+  function openItemDialog(item=null,stageId=null){
+    $('itemDialogTitle').textContent=item?'編輯事項':'新增事項'; $('itemId').value=item?.id||''; $('itemTitleInput').value=item?.title||''; $('itemStageInput').innerHTML=sortedStages(true).map(s=>`<option value="${s.id}" ${(item?.stageId||stageId)===s.id?'selected':''}>${escapeHTML(s.title)}${s.hidden?'（已隱藏）':''}</option>`).join(''); fillStatusSelect($('itemStatusInput'),item?.status||'待辦'); fillDateTypeSelect($('itemDateTypeInput'),item?.dateType||'執行期間'); fillColorSelect($('itemColorInput'),item?.color||'',true); $('itemStartInput').value=item?.start||''; $('itemEndInput').value=item?.end||''; fillAudienceChecks($('audienceChecks'),item?.audiences||[]); $('itemOwnerInput').value=item?.owner||''; $('itemPlaceInput').value=item?.place||''; $('itemDescInput').value=item?.desc||''; renderSubtaskEditors(item?.subtasks||[]); if(!item) addSubtaskEditor({audiences:getCheckedAudiences($('audienceChecks'))}); updateItemDateLabels(); $('itemDialog').showModal();
   }
-  function fillAudienceChecks(container, selected=[]) {
-    container.innerHTML = audiences.map(a => `<label class="check"><input type="checkbox" value="${a}" ${selected.includes(a)?'checked':''}>${a}</label>`).join('');
+  function updateItemDateLabels(){ const t=$('itemDateTypeInput').value; const endRow=$('itemEndInput').closest('.form-row'); if(t==='執行期間'){ endRow.classList.remove('hide'); $('itemStartInput').closest('.form-row').querySelector('label').textContent='開始日期'; endRow.querySelector('label').textContent='截止／結束日期'; } else { endRow.classList.toggle('hide', !['執行期間'].includes(t)); $('itemStartInput').closest('.form-row').querySelector('label').textContent=t; } }
+  function renderSubtaskEditors(subtasks=[]){ const box=$('subtaskEditors'); box.innerHTML=''; subtasks.forEach(st=>addSubtaskEditor(st)); }
+  function addSubtaskEditor(st={}){
+    const div=document.createElement('div'); div.className='subtask-editor'; div.dataset.id=st.id||uid(); const isRange=(st.dateType||'執行日期')==='執行期間';
+    div.innerHTML=`<div class="form-grid"><div class="form-row"><label>日期類型</label><select class="st-date-type"></select></div><div class="form-row st-single-date"><label>日期</label><input class="st-date" type="date" value="${escapeHTML(st.date||st.start||'')}" /></div><div class="form-row st-start-date"><label>開始日期</label><input class="st-start" type="date" value="${escapeHTML(st.start||st.date||'')}" /></div><div class="form-row st-end-date"><label>截止／結束日期</label><input class="st-end" type="date" value="${escapeHTML(st.end||st.date||st.start||'')}" /></div><div class="form-row"><label>狀態</label><select class="st-status"></select></div></div><div class="form-row"><label>任務內容</label><textarea class="st-text" placeholder="可以換行、使用項目符號或 [ ] 勾選。">${escapeHTML(st.text||'')}</textarea></div><div class="form-row"><label>對象，可複選</label><div class="checks st-audiences"></div></div><div class="form-grid"><div class="form-row"><label>負責人</label><input class="st-owner" type="text" value="${escapeHTML(st.owner||'')}" /></div><div class="form-row"><label>詳細備註</label><textarea class="st-note" placeholder="可換行，也可輸入：\n- 項目\n1. 編號項目\n[ ] 待勾選事項\n[x] 已完成事項">${escapeHTML(st.note||'')}</textarea><div class="editor-help">支援換行、項目符號、編號，以及 [ ] / [x] 勾選清單。</div></div></div><button type="button" class="small danger remove-subtask">刪除此子事件</button>`;
+    fillDateTypeSelect(div.querySelector('.st-date-type'),st.dateType||'執行日期'); fillStatusSelect(div.querySelector('.st-status'),st.status||'待辦'); fillAudienceChecks(div.querySelector('.st-audiences'),st.audiences||[]); div.querySelector('.remove-subtask').onclick=()=>div.remove(); div.querySelector('.st-date-type').onchange=()=>updateSubDateEditor(div); $('subtaskEditors').appendChild(div); updateSubDateEditor(div);
   }
-  function getCheckedAudiences(container) {
-    return [...container.querySelectorAll('input:checked')].map(i => i.value);
-  }
+  function updateSubDateEditor(div){ const isRange=div.querySelector('.st-date-type').value==='執行期間'; div.querySelector('.st-single-date').classList.toggle('hide',isRange); div.querySelector('.st-start-date').classList.toggle('hide',!isRange); div.querySelector('.st-end-date').classList.toggle('hide',!isRange); }
 
-  function openStageDialog(stage=null, position='bottom') {
-    $('stageDialogTitle').textContent = stage ? '編輯階段' : '新增階段';
-    $('stageId').value = stage?.id || '';
-    $('stageTitleInput').value = stage?.title || '';
-    $('stageStartInput').value = stage?.start || '';
-    $('stageEndInput').value = stage?.end || '';
-    fillStatusSelect($('stageStatusInput'), stage?.status || '待辦');
-    $('stageColorInput').value = stage?.color || 'purple';
-    $('stageDescInput').value = stage?.desc || '';
-    $('saveStageBtn').dataset.position = position;
-    $('stageDialog').showModal();
-  }
-  $('stageForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const id = $('stageId').value;
-    const payload = {
-      id: id || uid(), title: $('stageTitleInput').value.trim(), start: $('stageStartInput').value, end: $('stageEndInput').value,
-      status: $('stageStatusInput').value, color: $('stageColorInput').value, desc: $('stageDescInput').value.trim()
-    };
-    if (!payload.title) return;
-    const idx = data.stages.findIndex(s => s.id === id);
-    if (idx >= 0) data.stages[idx] = payload;
-    else if ($('saveStageBtn').dataset.position === 'top') data.stages.unshift(payload);
-    else data.stages.push(payload);
-    $('stageDialog').close();
-    renderAll();
+  $('stageForm').addEventListener('submit',e=>{ e.preventDefault(); const id=$('stageId').value; const payload={id:id||uid(),title:$('stageTitleInput').value.trim(),start:$('stageStartInput').value,end:$('stageEndInput').value,status:$('stageStatusInput').value,color:$('stageColorInput').value,desc:$('stageDescInput').value.trim(),hidden:!!data.stages.find(s=>s.id===id)?.hidden,order:data.stages.find(s=>s.id===id)?.order||data.stages.length+1}; if(!payload.title) return; const idx=data.stages.findIndex(s=>s.id===id); if(idx>=0)data.stages[idx]=payload; else data.stages.push(payload); $('stageDialog').close(); renderAll(); });
+  $('itemDateTypeInput').addEventListener('change',updateItemDateLabels);
+  $('addSubtaskBtn').onclick=()=>addSubtaskEditor({audiences:getCheckedAudiences($('audienceChecks'))});
+  $('itemForm').addEventListener('submit',e=>{ e.preventDefault(); const id=$('itemId').value; const old=data.items.find(i=>i.id===id); const subtasks=[...$('subtaskEditors').querySelectorAll('.subtask-editor')].map((div,idx)=>{ const type=div.querySelector('.st-date-type').value; const base={id:div.dataset.id||uid(),dateType:type,text:div.querySelector('.st-text').value.trim(),audiences:getCheckedAudiences(div.querySelector('.st-audiences')),owner:div.querySelector('.st-owner').value.trim(),status:div.querySelector('.st-status').value,note:div.querySelector('.st-note').value.trim(),order:idx+1}; if(type==='執行期間'){ base.start=div.querySelector('.st-start').value; base.end=div.querySelector('.st-end').value; base.date=''; } else { base.date=div.querySelector('.st-date').value; base.start=''; base.end=''; } return base; }).filter(st=>st.text||st.date||st.start||st.note); const payload={id:id||uid(),stageId:$('itemStageInput').value,title:$('itemTitleInput').value.trim(),status:$('itemStatusInput').value,dateType:$('itemDateTypeInput').value,start:$('itemStartInput').value,end:$('itemDateTypeInput').value==='執行期間' ? $('itemEndInput').value : $('itemStartInput').value,audiences:getCheckedAudiences($('audienceChecks')),owner:$('itemOwnerInput').value.trim(),place:$('itemPlaceInput').value.trim(),desc:$('itemDescInput').value.trim(),subtasks,color:$('itemColorInput').value,hidden:!!old?.hidden,order:old?.order||data.items.length+1}; if(!payload.title) return; const idx=data.items.findIndex(i=>i.id===id); if(idx>=0)data.items[idx]=payload; else data.items.push(payload); $('itemDialog').close(); renderAll(); });
+
+  function deleteStage(id){ const st=stageById(id); if(!st) return showToast('找不到這個階段。'); requestConfirm(`確定要刪除「${st.title}」嗎？此階段底下的事項也會一起刪除。`,()=>{ data.stages=data.stages.filter(s=>String(s.id)!==String(id)); data.items=data.items.filter(i=>String(i.stageId)!==String(id)); renderAll(); showToast('已刪除階段。'); },{title:'刪除階段',okText:'確定刪除'}); }
+  function deleteItem(id){ const it=data.items.find(i=>String(i.id)===String(id)); if(!it) return showToast('找不到這個事項。'); requestConfirm(`確定要刪除「${it.title}」嗎？`,()=>{ data.items=data.items.filter(i=>String(i.id)!==String(id)); renderAll(); showToast('已刪除事項。'); },{title:'刪除事項',okText:'確定刪除'}); }
+  function toggleStage(id){ const st=stageById(id); if(!st) return; st.hidden=!st.hidden; renderAll(); showToast(st.hidden?'已隱藏階段，並移到最下方。':'已恢復顯示階段。'); }
+  function toggleItem(id){ const it=data.items.find(i=>String(i.id)===String(id)); if(!it) return; it.hidden=!it.hidden; renderAll(); showToast(it.hidden?'已隱藏事項，日期總表不再顯示。':'已恢復顯示事項。'); }
+
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.closeDialog){ e.preventDefault(); $(b.dataset.closeDialog).close(); }
+    if(b.dataset.addItem) openItemDialog(null,b.dataset.addItem);
+    if(b.dataset.editStage) openStageDialog(data.stages.find(s=>String(s.id)===String(b.dataset.editStage)));
+    if(b.dataset.editItem) openItemDialog(data.items.find(i=>String(i.id)===String(b.dataset.editItem)));
+    if(b.dataset.deleteStage) deleteStage(b.dataset.deleteStage);
+    if(b.dataset.deleteItem) deleteItem(b.dataset.deleteItem);
+    if(b.dataset.toggleStage) toggleStage(b.dataset.toggleStage);
+    if(b.dataset.toggleItem) toggleItem(b.dataset.toggleItem);
+    if(b.dataset.moveStageUp) moveStage(b.dataset.moveStageUp,-1);
+    if(b.dataset.moveStageDown) moveStage(b.dataset.moveStageDown,1);
+    if(b.dataset.moveItemUp) moveItem(b.dataset.moveItemUp,-1);
+    if(b.dataset.moveItemDown) moveItem(b.dataset.moveItemDown,1);
   });
 
-  function renderSubtaskEditors(subtasks=[]) {
-    const box = $('subtaskEditors');
-    box.innerHTML = '';
-    subtasks.forEach(st => addSubtaskEditor(st));
-  }
-  function addSubtaskEditor(st={}) {
-    const div = document.createElement('div');
-    div.className = 'subtask-editor';
-    div.dataset.id = st.id || uid();
-    div.innerHTML = `
-      <div class="form-grid">
-        <div class="form-row"><label>日期類型</label><select class="st-date-type"></select></div>
-        <div class="form-row"><label>日期</label><input class="st-date" type="date" value="${escapeHTML(st.date || '')}" /></div>
-        <div class="form-row"><label>狀態</label><select class="st-status"></select></div>
-      </div>
-      <div class="form-row"><label>任務內容</label><textarea class="st-text" placeholder="例如：幼兒園協助發放給家長">${escapeHTML(st.text || '')}</textarea></div>
-      <div class="form-row"><label>對象，可複選</label><div class="checks st-audiences"></div></div>
-      <div class="form-grid">
-        <div class="form-row"><label>負責人</label><input class="st-owner" type="text" value="${escapeHTML(st.owner || '')}" /></div>
-        <div class="form-row"><label>詳細備註</label><textarea class="st-note" placeholder="可換行，也可輸入：\n- 項目\n1. 編號項目\n[ ] 待勾選事項\n[x] 已完成事項">${escapeHTML(st.note || '')}</textarea><div class="editor-help">支援換行、項目符號、編號，以及 [ ] / [x] 勾選清單。</div></div>
-      </div>
-      <button type="button" class="small danger remove-subtask">刪除此子任務</button>
-    `;
-    fillDateTypeSelect(div.querySelector('.st-date-type'), st.dateType || '執行日期');
-    fillStatusSelect(div.querySelector('.st-status'), st.status || '待辦');
-    fillAudienceChecks(div.querySelector('.st-audiences'), st.audiences || []);
-    div.querySelector('.remove-subtask').onclick = () => div.remove();
-    $('subtaskEditors').appendChild(div);
-  }
-
-  function openItemDialog(item=null, stageId=null) {
-    $('itemDialogTitle').textContent = item ? '編輯事項' : '新增事項';
-    $('itemId').value = item?.id || '';
-    $('itemTitleInput').value = item?.title || '';
-    $('itemStageInput').innerHTML = data.stages.map(s => `<option value="${s.id}" ${(item?.stageId || stageId) === s.id ? 'selected' : ''}>${escapeHTML(s.title)}</option>`).join('');
-    fillStatusSelect($('itemStatusInput'), item?.status || '待辦');
-    fillDateTypeSelect($('itemDateTypeInput'), item?.dateType || '執行期間');
-    $('itemStartInput').value = item?.start || '';
-    $('itemEndInput').value = item?.end || '';
-    fillAudienceChecks($('audienceChecks'), item?.audiences || []);
-    $('itemOwnerInput').value = item?.owner || '';
-    $('itemPlaceInput').value = item?.place || '';
-    $('itemDescInput').value = item?.desc || '';
-    renderSubtaskEditors(item?.subtasks || []);
-    if (!item) addSubtaskEditor({audiences: []});
-    $('itemDialog').showModal();
-  }
-  $('addSubtaskBtn').onclick = () => addSubtaskEditor({audiences: getCheckedAudiences($('audienceChecks'))});
-  $('itemForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const id = $('itemId').value;
-    const subtasks = [...$('subtaskEditors').querySelectorAll('.subtask-editor')].map(div => ({
-      id: div.dataset.id || uid(), dateType: div.querySelector('.st-date-type').value, date: div.querySelector('.st-date').value,
-      text: div.querySelector('.st-text').value.trim(), audiences: getCheckedAudiences(div.querySelector('.st-audiences')),
-      owner: div.querySelector('.st-owner').value.trim(), status: div.querySelector('.st-status').value, note: div.querySelector('.st-note').value.trim()
-    })).filter(st => st.text || st.date || st.note);
-    const payload = {
-      id: id || uid(), stageId: $('itemStageInput').value, title: $('itemTitleInput').value.trim(), status: $('itemStatusInput').value, dateType: $('itemDateTypeInput').value,
-      start: $('itemStartInput').value, end: $('itemEndInput').value, audiences: getCheckedAudiences($('audienceChecks')),
-      owner: $('itemOwnerInput').value.trim(), place: $('itemPlaceInput').value.trim(), desc: $('itemDescInput').value.trim(), subtasks
-    };
-    if (!payload.title) return;
-    const idx = data.items.findIndex(i => i.id === id);
-    if (idx >= 0) data.items[idx] = payload;
-    else data.items.push(payload);
-    $('itemDialog').close();
-    renderAll();
-  });
-
-  function deleteStage(id) {
-    const targetStage = data.stages.find(s => String(s.id) === String(id));
-    if (!targetStage) {
-      showToast('找不到這個階段，請重新整理後再試一次。');
-      renderAll();
-      return;
-    }
-    const hasItems = data.items.some(i => String(i.stageId) === String(id));
-    const msg = hasItems
-      ? `確定要刪除「${targetStage.title || '此階段'}」嗎？此階段底下的事項也會一起刪除。`
-      : `確定要刪除「${targetStage.title || '此階段'}」嗎？`;
-    requestConfirm(msg, () => {
-      const before = data.stages.length;
-      data.stages = data.stages.filter(s => String(s.id) !== String(id));
-      data.items = data.items.filter(i => String(i.stageId) !== String(id));
-      saveData();
-      renderAll();
-      showToast(data.stages.length < before ? '已刪除階段。' : '刪除未完成，請重新整理後再試一次。');
-    }, {title: '刪除階段', okText: '確定刪除'});
-  }
-  function deleteItem(id) {
-    const target = data.items.find(i => String(i.id) === String(id));
-    if (!target) {
-      showToast('找不到這個事項，請重新整理後再試一次。');
-      renderAll();
-      return;
-    }
-    requestConfirm(`確定要刪除「${target.title || '此事項'}」嗎？`, () => {
-      const before = data.items.length;
-      data.items = data.items.filter(i => String(i.id) !== String(id));
-      saveData();
-      renderAll();
-      showToast(data.items.length < before ? '已刪除事項。' : '刪除未完成，請重新整理後再試一次。');
-    }, {title: '刪除事項', okText: '確定刪除'});
-  }
-
-  window.deleteItemSafe = deleteItem;
-  window.deleteStageSafe = deleteStage;
-
-  $('addStageTopBtn').onclick = () => openStageDialog(null, 'top');
-  $('addStageBottomBtn').onclick = () => openStageDialog(null, 'bottom');
-  $('addItemTopBtn').onclick = () => {
-    if (!data.stages.length) {
-      showToast('請先新增一個階段，再新增事項。');
-      return;
-    }
-    openItemDialog(null, data.stages[0]?.id);
-  };
-
-  $('settingsBtn').onclick = () => {
-    $('settingTitle').value = data.meta.title;
-    $('settingSubtitle').value = data.meta.subtitle;
-    $('settingNotice').value = data.meta.notice;
-    $('settingsDialog').showModal();
-  };
-  $('settingsForm').addEventListener('submit', e => {
-    e.preventDefault();
-    data.meta.title = $('settingTitle').value.trim() || '研究執行時間軸';
-    data.meta.subtitle = $('settingSubtitle').value.trim();
-    data.meta.notice = $('settingNotice').value.trim();
-    $('settingsDialog').close();
-    renderAll();
-  });
-
-  function setScreenshotMode(on) {
-    document.body.classList.toggle('screenshot-mode', on);
-    $('screenshotBtn').textContent = on ? '離開截圖模式' : '截圖模式';
-  }
-  $('screenshotBtn').onclick = () => setScreenshotMode(!document.body.classList.contains('screenshot-mode'));
-  $('exitScreenshotFloating').onclick = () => setScreenshotMode(false);
-
-  $('exportBtn').onclick = () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const today = new Date().toISOString().slice(0,10);
-    a.href = url;
-    a.download = `research-timeline-backup-${today}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-  $('importBtn').onclick = () => $('fileInput').click();
-  $('fileInput').onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const imported = JSON.parse(text);
-      if (!imported.meta || !Array.isArray(imported.stages) || !Array.isArray(imported.items)) throw new Error('格式不符');
-      requestConfirm('匯入後會覆蓋目前畫面中的資料，確定要匯入嗎？', () => {
-        data = imported;
-        saveData();
-        renderAll();
-        showToast('已匯入資料。');
-      }, {title: '匯入 JSON', okText: '確定匯入'});
-    } catch (err) {
-      showToast('匯入失敗：請確認 JSON 檔案格式是否正確。');
-    } finally {
-      e.target.value = '';
-    }
-  };
+  $('addStageTopBtn').onclick=()=>openStageDialog(null,'top'); $('addStageBottomBtn').onclick=()=>openStageDialog(null,'bottom'); $('addItemTopBtn').onclick=()=>{ if(!data.stages.length) return showToast('請先新增階段。'); openItemDialog(null, sortedStages(true)[0]?.id); };
+  $('timelineViewBtn').onclick=()=>{ currentView='timeline'; renderAll(); }; $('dateViewBtn').onclick=()=>{ currentView='date'; renderAll(); }; $('sortModeBtn').onclick=()=>{ data.meta.sortMode=data.meta.sortMode==='manual'?'date':'manual'; if(data.meta.sortMode==='manual') setSequentialOrders(); renderAll(); };
+  $('settingsBtn').onclick=()=>{ $('settingTitle').value=data.meta.title; $('settingSubtitle').value=data.meta.subtitle; $('settingNotice').value=data.meta.notice; $('settingsDialog').showModal(); }; $('editNoticeBtn').onclick=()=>$('settingsBtn').click();
+  $('settingsForm').addEventListener('submit',e=>{ e.preventDefault(); data.meta.title=$('settingTitle').value.trim()||'研究執行時間軸'; data.meta.subtitle=$('settingSubtitle').value.trim()||DEFAULT_SUBTITLE; data.meta.notice=$('settingNotice').value.trim(); $('settingsDialog').close(); renderAll(); });
+  $('screenshotBtn').onclick=()=>document.body.classList.add('screenshot-mode'); $('screenshotExitBtn').onclick=()=>document.body.classList.remove('screenshot-mode');
+  $('confirmOkBtn').onclick=()=>{ const fn=pendingConfirm; pendingConfirm=null; $('confirmDialog').close(); if(fn) fn(); }; $('confirmCancelBtn').onclick=()=>{ pendingConfirm=null; $('confirmDialog').close(); }; $('confirmCloseBtn').onclick=()=>{ pendingConfirm=null; $('confirmDialog').close(); };
+  $('exportBtn').onclick=()=>{ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`research-timeline-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href); };
+  $('importBtn').onclick=()=>$('importFile').click(); $('importFile').addEventListener('change',async e=>{ const file=e.target.files?.[0]; if(!file) return; try{ const txt=await file.text(); data=normalizeData(JSON.parse(txt)); renderAll(); showToast('已匯入資料。'); }catch(err){ showToast('匯入失敗，請確認 JSON 檔案。'); } e.target.value=''; });
 
   renderAll();
 })();
