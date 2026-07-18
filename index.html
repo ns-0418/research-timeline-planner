@@ -258,7 +258,7 @@
   }
   function renderStage(stage){
     const stageEl=document.createElement('article'); stageEl.className=`stage color-${colorOf(stage.color)} ${stage.hidden?'hidden':''}`; stageEl.dataset.stageId=stage.id;
-    stageEl.innerHTML=`<div class="stage-header"><div><div class="stage-title"><span class="drag-handle edit-only" draggable="true" data-drag-type="stage" data-id="${stage.id}">⠿</span><span class="dot ${colorOf(stage.color)}"></span><div><h2>${escapeHTML(stage.title)}</h2><div class="stage-meta">${fmtRange(stage.start,stage.end)}${stage.hidden?'｜已隱藏':''}</div>${stage.desc?`<div class="rich-text">${renderRichText(stage.desc)}</div>`:''}</div></div></div><div class="stage-actions"><span class="pill ${stage.hidden?'status-隱藏':statusClass(stage.status)}">${stage.hidden?'已隱藏':escapeHTML(stage.status||'無')}</span><button type="button" class="small edit-only" data-move-stage-up="${stage.id}">↑</button><button type="button" class="small edit-only" data-move-stage-down="${stage.id}">↓</button><button type="button" class="small edit-only" data-toggle-stage="${stage.id}">${stage.hidden?'顯示':'隱藏'}</button><button type="button" class="small edit-only" data-add-item="${stage.id}">＋事項</button><button type="button" class="small edit-only" data-edit-stage="${stage.id}">編輯</button><button type="button" class="small danger edit-only" data-delete-stage="${stage.id}">刪除</button></div></div><div class="items"></div>`;
+    stageEl.innerHTML=`<div class="stage-header"><div><div class="stage-title"><span class="drag-handle edit-only" draggable="true" data-drag-type="stage" data-id="${stage.id}">⠿</span><span class="dot ${colorOf(stage.color)}"></span><div><h2>${escapeHTML(stage.title)}</h2><div class="stage-meta">${fmtRange(stage.start,stage.end)}${stage.hidden?'｜已隱藏':''}</div>${stage.desc?`<div class="rich-text">${renderRichText(stage.desc)}</div>`:''}</div></div></div><div class="stage-actions"><span class="pill ${stage.hidden?'status-隱藏':statusClass(stage.status)}">${stage.hidden?'已隱藏':escapeHTML(stage.status||'無')}</span><button type="button" class="small edit-only" data-move-stage-up="${stage.id}">↑</button><button type="button" class="small edit-only" data-move-stage-down="${stage.id}">↓</button><button type="button" class="small edit-only" data-toggle-stage="${stage.id}">${stage.hidden?'顯示':'隱藏'}</button><button type="button" class="small edit-only" data-copy-stage="${stage.id}">複製</button><button type="button" class="small edit-only" data-add-item="${stage.id}">＋事項</button><button type="button" class="small edit-only" data-edit-stage="${stage.id}">編輯</button><button type="button" class="small danger edit-only" data-delete-stage="${stage.id}">刪除</button></div></div><div class="items"></div>`;
     const itemsBox=stageEl.querySelector('.items');
     let items=sortedItemsForStage(stage.id,true);
     if(!selectedAll()) items=items.filter(item=>item.hidden || intersects(item.audiences)||(item.subtasks||[]).some(st=>intersects(st.audiences)));
@@ -450,6 +450,35 @@
     openItemDialog(clone,original.stageId);
     showToast('已複製內容，請重新設定日期後儲存。');
   }
+  function copyStage(id){
+    const original=stageById(id);
+    if(!original) return showToast('找不到要複製的階段。');
+    const newStageId=uid();
+    const stageClone=JSON.parse(JSON.stringify(original));
+    stageClone.id=newStageId;
+    stageClone.title=(original.title||'未命名階段')+'（複製）';
+    stageClone.start='';
+    stageClone.end='';
+    stageClone.hidden=false;
+    stageClone.order=data.stages.length+1;
+
+    const originalItems=data.items.filter(i=>String(i.stageId)===String(id));
+    const itemClones=originalItems.map((it,idx)=>{
+      const itemClone=clearCopiedDates(JSON.parse(JSON.stringify(it)));
+      itemClone.id=uid();
+      itemClone.stageId=newStageId;
+      itemClone.hidden=false;
+      itemClone.order=data.items.length+idx+1;
+      return itemClone;
+    });
+
+    data.stages.push(stageClone);
+    data.items.push(...itemClones);
+    data.meta.sortMode='manual';
+    saveData();
+    renderAll();
+    showToast('已複製階段與底下事項，請重新設定階段、事項與子事件日期。');
+  }
   function syncEndDateFromStart(startInput,endInput){
     if(!startInput || !endInput || !startInput.value) return;
     endInput.min=startInput.value;
@@ -639,6 +668,7 @@
     if(b.dataset.addItem) openItemDialog(null,b.dataset.addItem);
     if(b.dataset.editStage) openStageDialog(data.stages.find(s=>String(s.id)===String(b.dataset.editStage)));
     if(b.dataset.editItem) openItemDialog(data.items.find(i=>String(i.id)===String(b.dataset.editItem)));
+    if(b.dataset.copyStage) copyStage(b.dataset.copyStage);
     if(b.dataset.copyItem) copyItem(b.dataset.copyItem);
     if(b.dataset.copySubtask) copySubtaskFromTimeline(b.dataset.parentItem,b.dataset.copySubtask);
     if(b.dataset.deleteStage) deleteStage(b.dataset.deleteStage);
